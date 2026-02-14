@@ -38,6 +38,7 @@ const adminMiddleware = async (req,res,next)=>{
         throw new Error("This is not a valid token.");
     }
     req.result = result;
+    next();
     }
     catch(err){
         res.send("Error: "+err);
