@@ -1,5 +1,7 @@
 const express = require('express');
 const adminMiddleware = require('../middleware/adminMiddleware');
+const userMiddleware = require('../middleware/userMiddleware');
+const {createProblem} = require('../controllers/userProblem');
 
 const problemRouter = express.Router();
 
@@ -9,7 +11,8 @@ problemRouter.patch('/:id',updateProblem);
 problemRouter.delete('/:id',deleteProblem);
 
 // These API are for Normal user
-problemRouter.get('user',solvedAllProblembyUser);
-problemRouter.get('/',getAllProblems);
-problemRouter.get('/:id',getProblemById);
+problemRouter.get('/user',userMiddleware,solvedAllProblembyUser);
+problemRouter.get('/',userMiddleware,getAllProblems);
+problemRouter.get('/:id',userMiddleware,getProblemById);
 
+module.exports = problemRouter;

@@ -1,5 +1,6 @@
-const {getLanguageById,submitBatch} = require("../utils/problemUtility");
-
+const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtility");
+const Problem = require("../Models/Problem");
+require('dotenv').config();
 const createProblem = async (req,res)=>{
 
     try{
@@ -12,18 +13,38 @@ const createProblem = async (req,res)=>{
        
         const languageId = getLanguageById(language);
         // Now we will submit the Btach Submission
-        const submissions = visibleTestCases.map((input,output)=>({
+        const submissions = visibleTestCases.map((value)=>({
             source_code:completeCode,
             language_id: languageId,
-            stdin: input,
-            expected_output: output
+            stdin: value.input,
+            expected_output: value.output
         }));
 
         const submitResult = await submitBatch(submissions);
+
+        // now we will take every token one by one and check that it is correct or not
+        const resultToken = submitResult.map((value)=>value.token);
+        const testResult = await submitToken(resultToken);
+
+        for(const test of testResult){
+        if(test.status_id!=3){
+         return res.status(400).send("Error Occured");
+        }
+       }
+
       }
+
+       const userProblem =  await Problem.create({
+              ...req.body,
+              problemCreator: req.result._id
+            });
+      
+            res.status(201).send("Problem Saved Successfully");
     }
     catch(err)
     {
-        res.send("Error: "+err);
+        res.status(400).send("Error: "+err);
     }
 }
+
+module.exports = {createProblem};
