@@ -1,18 +1,23 @@
 const express = require('express');
-const adminMiddleware = require('../middleware/adminMiddleware');
-const userMiddleware = require('../middleware/userMiddleware');
-const {createProblem} = require('../controllers/userProblem');
 
-const problemRouter = express.Router();
+const problemRouter =  express.Router();
+const adminMiddleware = require("../middleware/adminMiddleware");
+const {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem} = require("../controllers/userProblem");
+const userMiddleware = require("../middleware/userMiddleware");
 
-// these API for Admin User
-problemRouter.post('/create',adminMiddleware,createProblem);
-problemRouter.patch('/:id',updateProblem);
-problemRouter.delete('/:id',deleteProblem);
 
-// These API are for Normal user
-problemRouter.get('/user',userMiddleware,solvedAllProblembyUser);
-problemRouter.get('/',userMiddleware,getAllProblems);
-problemRouter.get('/:id',userMiddleware,getProblemById);
+// Create
+problemRouter.post("/create" ,adminMiddleware,createProblem);
+problemRouter.put("/update/:id",adminMiddleware, updateProblem);
+problemRouter.delete("/delete/:id",adminMiddleware, deleteProblem);
+problemRouter.get("/test",adminMiddleware, (req,res)=>{
+    res.status(200).send("Admin Middleware is working");
+});
+
+problemRouter.get("/problemById/:id",userMiddleware,getProblemById);
+problemRouter.get("/getAllProblem",userMiddleware, getAllProblem);
+// problemRouter.get("/problemSolvedByUser",userMiddleware, solvedAllProblembyUser);
+
 
 module.exports = problemRouter;
+

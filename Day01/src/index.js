@@ -5,7 +5,7 @@ const main = require('./config/db');
 const cookieParser = require('cookie-parser');
 const authRouter = require('./Routes/userAuth');
 const redisClient = require('./config/redis');
-const problemRouter = require('./Models/Problem');
+const problemRouter = require('./Routes/ProblemCreator');
 const Promis = require('promise');
 
 app.use(express.json())

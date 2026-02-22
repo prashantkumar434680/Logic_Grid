@@ -35,7 +35,8 @@ const adminMiddleware = async (req,res,next)=>{
             throw new Error("Invalid Token");
 
         req.result = result;
-
+        // console.log(req);
+        // console.log("admin middleware");
 
         next();
     }

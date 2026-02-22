@@ -3,7 +3,6 @@ const User =  require("../Models/User")
 const validate = require('../utils/validator');
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
-const cookie = require('cookie');
 
 const register = async (req,res)=>{
     
@@ -31,6 +30,7 @@ const login = async (req,res)=>{
 
     try{
         const {emailId, password} = req.body;
+        
 
         if(!emailId)
             throw new Error("Invalid Credentials");
