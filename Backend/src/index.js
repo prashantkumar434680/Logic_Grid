@@ -6,12 +6,13 @@ const cookieParser = require('cookie-parser');
 const authRouter = require('./Routes/userAuth');
 const redisClient = require('./config/redis');
 const problemRouter = require('./Routes/ProblemCreator');
-const Promis = require('promise');
+const submitRouter = require('./Routes/submit');
 
 app.use(express.json())
 app.use(cookieParser());
 
 app.use('/user',authRouter);
+app.use('/submission',submitRouter);
 app.use('/problem',problemRouter);
 
 const InitalizeConnection = async()=>{

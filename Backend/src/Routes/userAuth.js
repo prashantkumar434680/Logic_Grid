@@ -10,9 +10,11 @@ authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.post('/logout', userMiddleware, logout);
 authRouter.post('/admin/register', adminMiddleware, adminRegister);
-authRouter.get("/test", (req, res) => {
-    res.status(200).json({ "message": "Server is reachable" });
-})
+// authRouter.get("/test", (req, res) => {
+//     res.status(200).json({ "message": "Server is reachable" });
+// })
+
+authRouter.delete('/deleteProfile',userMiddleware,deleteProfile)
 // authRouter.get('/getProfile',getProfile);
 
 

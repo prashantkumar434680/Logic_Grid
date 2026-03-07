@@ -10,13 +10,14 @@ const userMiddleware = require("../middleware/userMiddleware");
 problemRouter.post("/create" ,adminMiddleware,createProblem);
 problemRouter.put("/update/:id",adminMiddleware, updateProblem);
 problemRouter.delete("/delete/:id",adminMiddleware, deleteProblem);
-problemRouter.get("/test",adminMiddleware, (req,res)=>{
-    res.status(200).send("Admin Middleware is working");
-});
+// problemRouter.get("/test",adminMiddleware, (req,res)=>{
+//     res.status(200).send("Admin Middleware is working");
+// });
 
 problemRouter.get("/problemById/:id",userMiddleware,getProblemById);
 problemRouter.get("/getAllProblem",userMiddleware, getAllProblem);
-// problemRouter.get("/problemSolvedByUser",userMiddleware, solvedAllProblembyUser);
+problemRouter.get("/problemSolvedByUser",userMiddleware, solvedAllProblembyUser);
+problemRouter.get('/submittedProblem/:pid',userMiddleware,submittedProblem);
 
 
 module.exports = problemRouter;

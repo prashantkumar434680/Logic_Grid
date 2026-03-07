@@ -129,25 +129,6 @@ const deleteProblem = async(req,res)=>{
   }
 }
 
-// const GetProblem = async (req,res)=>{
-//   try{
-//     const {id} = req.params;
-
-//     if(!id){
-//       res.status(400).send("ID is Missing");
-//     }
-//     const problem = await Problem.findById(id);
-
-//     if(!problem){
-//       res.status(404).send("Problem is not found in Db");
-//     }
-//     res.status(200).send(problem);
-//   }
-//   catch(err){
-//     res.status(500).send("Error: "+err.message);
-//   }
-// }
-
 const getProblemById = async(req,res)=>{
 
   const {id} = req.params;
@@ -170,19 +151,7 @@ const getProblemById = async(req,res)=>{
 }
 
 //  find all problems that are present in our Db and send it to frontend
-// const allProblem = async (req,res)=>{
-//   try{
-//    const allProblem = await Problem .find({});
 
-//    if(allProblem.length==0){
-//     return res.status(404).send("There is not Problem in DB");
-//    }
-//    res.status(200).send(allProblem);
-//   }
-//   catch(err){
-//     res.status(400).send("Error: "+err.message);
-//   }
-// }
 
 const getAllProblem = async(req,res)=>{
 
