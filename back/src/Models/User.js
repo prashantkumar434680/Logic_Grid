@@ -21,7 +21,37 @@ const userSchema = new Schema({
         lowercase:true,
         immutable: true,
     },
-    
+    verifyotp:{
+        type:String
+    },
+    verifyotpExpireAt: {
+        type: Number, default:0
+    },
+    isAccountVerified:{type: Number, default: false},
+    verificationToken:{
+        type:String
+    },
+    resetOtp:{ type:String, default:''},
+    resetOtpExpireAt:{type:Number, default:0},
+    verificationTokenExpires:{
+        type:Date
+    },
+    resetPasswordToken: {
+        type: String
+    },
+    resetPasswordExpires: {
+        type: Date
+    },
+    avatar: {
+       type: String
+    },
+    bio: {
+       type: String,
+       maxLength: 200
+    },
+    googleId: {
+       type: String
+    },
     age:{
         type:Number,
         min:6,
@@ -37,7 +67,8 @@ const userSchema = new Schema({
     },
     password:{
         type:String,
-        required: true
+        required: true,
+        select:false
     }
 },{
     timestamps:true

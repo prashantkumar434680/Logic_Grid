@@ -8,6 +8,7 @@ const authRouter = require('./Routes/userAuth');
 const redisClient = require('./config/redis');
 const problemRouter = require('./Routes/ProblemCreator');
 const submitRouter = require('./Routes/submit');
+const userDataRouter = require('./Routes/userData');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -19,6 +20,8 @@ app.use(cookieParser());
 app.use('/user',authRouter);
 app.use('/submission',submitRouter);
 app.use('/problem',problemRouter);
+app.use('/userData',userDataRouter);
+
 
 const InitalizeConnection = async()=>{
     try{

@@ -3,6 +3,8 @@ const User =  require("../Models/User")
 const validate = require('../utils/validator');
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
+const crypto = require("crypto");
+const transporter = require('../config/nodemailer');
 
 const register = async (req,res)=>{
     
@@ -27,10 +29,153 @@ const register = async (req,res)=>{
     }
     
      res.cookie('token',token,{maxAge: 60*60*1000});
+     await transporter.sendMail({
+        from: process.env.SENDER_EMAIL,
+        to: emailId,
+        subject: "Welcome to LogicGrid",
+        text: `Hello ${firstName},\n\nWelcome to LogicGrid. Your account has been created successfully.`
+     });
      res.status(201).json({
         user:reply,
         message:"Register sucessfully Successfully"
     })
+    }
+    catch(err){
+        console.log(err);
+        res.status(400).send("Error: "+err);
+    }
+}
+
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+
+const sendVerifyOtp = async (req,res)=>{
+    try{
+        const {_id, firstName, emailId} = req.result;
+
+        const user = await User.findById(_id);
+        if(!user){
+            return res.status(404).send("Error: User Doesn't Exist");
+        }
+
+        const otp = generateOTP();
+        user.verifyotp = otp;
+        user.verifyotpExpireAt = Date.now() + 24 * 60 * 60 * 1000;
+        await user.save();
+
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL,
+            to: emailId,
+            subject: "Account Verification OTP for LogicGrid",
+            text: `Hello ${firstName},\n\nYour OTP for account verification is ${otp}.`
+        });
+
+        res.status(200).json({
+            message: "OTP Sent Successfully"
+        });
+    }
+    catch(err){
+        console.log(err);
+        res.status(400).send("Error: "+err);
+    }
+}
+
+const verifyEmail = async (req,res)=>{
+    try{
+        const {otp} = req.body;
+        const {_id} = req.result;
+
+        const user = await User.findById(_id);
+        if(!user){
+            return res.status(404).send("Error: User Doesn't Exist");
+        }
+
+        if(user.verifyotp !== otp){
+            return res.status(400).send("Error: Invalid OTP");
+        }
+
+        if(user.verifyotpExpireAt < Date.now()){
+            return res.status(400).send("Error: OTP Expired");
+        }
+
+        user.isAccountVerified = true;
+        user.verifyotp = '';
+        user.verifyotpExpireAt = 0;
+        await user.save();
+
+        res.status(200).json({
+            message: "Account Verified Successfully"
+        });
+    }
+    catch(err){
+        console.log(err);
+        res.status(400).send("Error: "+err);
+    }
+}
+
+const sendResetOtp = async (req,res)=>{
+    try{
+        const {emailId} = req.body;
+
+        if(!emailId){
+            return res.status(400).send("Error: Email is Required");
+        }
+
+        const user = await User.findOne({emailId});
+        if(!user){
+            return res.status(404).send("Error: User Doesn't Exist");
+        }
+
+        const otp = generateOTP();
+        user.resetOtp = otp;
+        user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000;
+        await user.save();
+
+        await transporter.sendMail({
+            from: process.env.SENDER_EMAIL,
+            to: emailId,
+            subject: "Password Reset OTP for LogicGrid",
+            text: `Hello ${user.firstName},\n\nYour password reset OTP is ${otp}. It is valid for 15 minutes.`
+        });
+
+        res.status(200).json({
+            message: "Reset OTP Sent Successfully"
+        });
+    }
+    catch(err){
+        console.log(err);
+        res.status(400).send("Error: "+err);
+    }
+}
+
+const resetPassword = async (req,res)=>{
+    try{
+        const {emailId, otp, password} = req.body;
+
+        if(!emailId || !otp || !password){
+            return res.status(400).send("Error: Missing Details");
+        }
+
+        const user = await User.findOne({emailId}).select('+password');
+        if(!user){
+            return res.status(404).send("Error: User Doesn't Exist");
+        }
+
+        if(user.resetOtp !== otp){
+            return res.status(400).send("Error: Invalid OTP");
+        }
+
+        if(user.resetOtpExpireAt < Date.now()){
+            return res.status(400).send("Error: OTP Expired");
+        }
+
+        user.password = await bcrypt.hash(password, 10);
+        user.resetOtp = '';
+        user.resetOtpExpireAt = 0;
+        await user.save();
+
+        res.status(200).json({
+            message: "Password Reset Successfully"
+        });
     }
     catch(err){
         console.log(err);
@@ -49,9 +194,12 @@ const login = async (req,res)=>{
         if(!password)
             throw new Error("Invalid Credentials");
 
-        const user = await User.findOne({emailId});
+        const user = await User.findOne({emailId}).select('+password');
 
-        const match = bcrypt.compare(password,user.password);
+        if(!user)
+            throw new Error("Invalid Credentials");
+
+        const match = await bcrypt.compare(password,user.password);
 
         if(!match)
             throw new Error("Invalid Credentials");
@@ -65,7 +213,7 @@ const login = async (req,res)=>{
 
         const token =  jwt.sign({_id:user._id , emailId:emailId, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
         res.cookie('token',token,{maxAge: 60*60*1000});
-        res.status(201).json({
+        res.status(200).json({
             user:reply,
             message:"Loggin Successfully"
         })
@@ -143,4 +291,4 @@ const deleteProfile = async(req,res)=>{
 }
 
 
-module.exports = {register, login,logout,adminRegister,deleteProfile};
+module.exports = {register, sendVerifyOtp, verifyEmail, sendResetOtp, resetPassword, login,logout,adminRegister,deleteProfile};

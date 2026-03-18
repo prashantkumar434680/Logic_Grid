@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
 import { useNavigate } from 'react-router';
+import logo from '../assets/logo.png';
 
 // Zod schema matching the problem schema
 const problemSchema = z.object({
@@ -89,7 +90,15 @@ function AdminPanel() {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 pt-24">
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="absolute top-5 left-5 sm:top-6 sm:left-6"
+      >
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');`}</style>
+      </button>
+
       <h1 className="text-3xl font-bold mb-6">Create New Problem</h1>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
