@@ -5,7 +5,10 @@ import Homepage from "./pages/Homepage";
 import { useDispatch, useSelector } from 'react-redux';
 import { checkAuth } from "./authSlice";
 import { useEffect, useState } from "react";
-import AdminPanel from "./pages/AdminPanel";
+import AdminPanel from "./components/AdminPanel";
+import ProblemPage from "./pages/ProblemPage";
+import Admin from "./pages/Admin";
+import AdminDelete from "./components/AdminDelete";
 import ResetPassword from "./pages/ResetPassword";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -13,7 +16,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 function App(){
   
   const dispatch = useDispatch();
-  const {isAuthenticated} = useSelector((state)=>state.auth);
+  const {isAuthenticated,user,loading} = useSelector((state)=>state.auth);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   // "dotenv".config();
 
@@ -24,6 +27,11 @@ function App(){
     });
   }, [dispatch]);
 
+    if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <span className="loading loading-spinner loading-lg"></span>
+    </div>;
+  }
 
   
   if (!authCheckComplete) {
@@ -48,6 +56,10 @@ function App(){
       <Route path="/login" element={isAuthenticated?<Navigate to="/" />:<Login/>}></Route>
       <Route path="/signup" element={isAuthenticated?<Navigate to="/" />:<Signup></Signup>}></Route>
       <Route path="/reset-password" element={isAuthenticated?<Navigate to="/" />:<ResetPassword/>}></Route>
+      <Route path="/admin" element={isAuthenticated && user?.role === 'admin' ? <Admin/>: <Navigate to="/" /> } ></Route>
+      <Route path="/admin/create" element={isAuthenticated && user?.role === 'admin' ? <AdminPanel/> : <Navigate to="/" /> } ></Route>
+      <Route path="/admin/delete" element={isAuthenticated && user?.role === 'admin' ? <AdminDelete/> : <Navigate to="/" /> } ></Route>
+      <Route path="/problem/:problemId" element={ <ProblemPage/> } ></Route>
       <Route path="/admin" element={<AdminPanel/>}></Route>
       {/* <Route 
         path="/admin" 
