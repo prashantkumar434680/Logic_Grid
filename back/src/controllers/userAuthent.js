@@ -48,6 +48,8 @@ const register = async (req,res)=>{
 
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
+
+
 const sendVerifyOtp = async (req,res)=>{
     try{
         const {_id, firstName, emailId} = req.result;
@@ -83,6 +85,7 @@ const verifyEmail = async (req,res)=>{
     try{
         const {otp} = req.body;
         const {_id} = req.result;
+        authLimiter();
 
         const user = await User.findById(_id);
         if(!user){

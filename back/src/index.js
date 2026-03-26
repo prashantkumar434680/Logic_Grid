@@ -9,6 +9,7 @@ const redisClient = require('./config/redis');
 const problemRouter = require('./Routes/ProblemCreator');
 const submitRouter = require('./Routes/submit');
 const userDataRouter = require('./Routes/userData');
+const passport = require('./config/passport');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -16,6 +17,9 @@ app.use(cors({
 }))
 app.use(express.json())
 app.use(cookieParser());
+
+// Initialize passport
+app.use(passport.initialize());
 
 app.use('/user',authRouter);
 app.use('/submission',submitRouter);

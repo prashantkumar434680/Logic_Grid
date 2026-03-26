@@ -42,6 +42,12 @@ const userSchema = new Schema({
     resetPasswordExpires: {
         type: Date
     },
+    googleId: {
+       type: String
+    },
+    githubId: {
+       type: String
+    },
     avatar: {
        type: String
     },
