@@ -48,8 +48,6 @@ const register = async (req,res)=>{
 
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
-
-
 const sendVerifyOtp = async (req,res)=>{
     try{
         const {_id, firstName, emailId} = req.result;

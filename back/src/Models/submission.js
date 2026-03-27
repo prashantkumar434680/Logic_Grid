@@ -7,7 +7,7 @@ const submissionSchema = new Schema({
         ref:'user',
         required:true
     },
-    ProblemId:{
+    problemId:{
         type:Schema.Types.ObjectId,
         ref:"problem",
         required:true

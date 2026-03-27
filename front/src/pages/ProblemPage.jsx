@@ -3,188 +3,43 @@ import { useForm } from 'react-hook-form';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
 import axiosClient from "../utils/axiosClient"
-import SubmissionHistory from "../components/SubmissionHistory"
-
-const langMap = {
-        cpp: 'C++',
-        java: 'Java',
-        javascript: 'JavaScript'
-};
-
 
 const ProblemPage = () => {
-  const [problem, setProblem] = useState(null);
+  const [problem,          setProblem]          = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [runResult, setRunResult] = useState(null);
-  const [submitResult, setSubmitResult] = useState(null);
-  const [activeLeftTab, setActiveLeftTab] = useState('description');
-  const [activeRightTab, setActiveRightTab] = useState('code');
+  const [code,             setCode]             = useState('');
+  const [loading,          setLoading]          = useState(false);
+  const [runResult,        setRunResult]        = useState(null);
+  const [submitResult,     setSubmitResult]     = useState(null);
+  const [activeLeftTab,    setActiveLeftTab]    = useState('description');
+  const [activeRightTab,   setActiveRightTab]   = useState('code');
   const editorRef = useRef(null);
-  let {problemId}  = useParams();
-
+  const { problemId } = useParams();
   const { handleSubmit } = useForm();
 
+  // ✅ Defined once — used in BOTH useEffects
+  const langMap = {
+    cpp:        "C++",
+    java:       "Java",
+    javascript: "JavaScript",
+  };
 
-//     _id: '507f1f77bcf86cd799439011',
-//     title: 'Two Sum',
-//     description: `Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
-
-// You may assume that each input would have exactly one solution, and you may not use the same element twice.
-
-// You can return the answer in any order.
-
-// Example 1:
-// Input: nums = [2,7,11,15], target = 9
-// Output: [0,1]
-// Explanation: Because nums[0] + nums[1] == 9, we return [0, 1].
-
-// Example 2:
-// Input: nums = [3,2,4], target = 6
-// Output: [1,2]
-
-// Example 3:
-// Input: nums = [3,3], target = 6
-// Output: [0,1]
-
-// Constraints:
-// - 2 <= nums.length <= 10^4
-// - -10^9 <= nums[i] <= 10^9
-// - -10^9 <= target <= 10^9
-// - Only one valid answer exists.`,
-//     difficulty: 'easy',
-//     tags: 'array',
-//     visibleTestCases: [
-//       {
-//         input: 'nums = [2,7,11,15], target = 9',
-//         output: '[0,1]',
-//         explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].'
-//       },
-//       {
-//         input: 'nums = [3,2,4], target = 6',
-//         output: '[1,2]',
-//         explanation: 'Because nums[1] + nums[2] == 6, we return [1, 2].'
-//       }
-//     ],
-//     startCode: [
-//       {
-//         language: 'javascript',
-//         initialCode: `/**
-//  * @param {number[]} nums
-//  * @param {number} target
-//  * @return {number[]}
-//  */
-// var twoSum = function(nums, target) {
-    
-// };`
-//       },
-//       {
-//         language: 'java',
-//         initialCode: `class Solution {
-//     public int[] twoSum(int[] nums, int target) {
-        
-//     }
-// }`
-//       },
-//       {
-//         language: 'cpp',
-//         initialCode: `class Solution {
-// public:
-//     vector<int> twoSum(vector<int>& nums, int target) {
-        
-//     }
-// };`
-//       }
-//     ],
-//     editorial: {
-//       content: `## Approach 1: Brute Force
-
-// The brute force approach is simple. Loop through each element x and find if there is another value that equals to target - x.
-
-// **Algorithm:**
-// 1. For each element in the array
-// 2. Check if target - current element exists in the rest of the array
-// 3. If found, return the indices
-
-// **Complexity Analysis:**
-// - Time complexity: O(n²)
-// - Space complexity: O(1)
-
-// ## Approach 2: Hash Table
-
-// To improve our runtime complexity, we need a more efficient way to check if the complement exists in the array. If the complement exists, we need to get its index. What is the best way to maintain a mapping of each element in the array to its index? A hash table.
-
-// **Algorithm:**
-// 1. Create a hash table to store elements and their indices
-// 2. For each element, calculate complement = target - current element
-// 3. If complement exists in hash table, return indices
-// 4. Otherwise, add current element to hash table
-
-// **Complexity Analysis:**
-// - Time complexity: O(n)
-// - Space complexity: O(n)`
-//     },
-//     solutions: [
-//       {
-//         language: 'javascript',
-//         title: 'Hash Table Approach',
-//         code: `var twoSum = function(nums, target) {
-//     const map = new Map();
-    
-//     for (let i = 0; i < nums.length; i++) {
-//         const complement = target - nums[i];
-        
-//         if (map.has(complement)) {
-//             return [map.get(complement), i];
-//         }
-        
-//         map.set(nums[i], i);
-//     }
-    
-//     return [];
-// };`
-//       },
-//       {
-//         language: 'java',
-//         title: 'Hash Table Approach',
-//         code: `class Solution {
-//     public int[] twoSum(int[] nums, int target) {
-//         Map<Integer, Integer> map = new HashMap<>();
-        
-//         for (int i = 0; i < nums.length; i++) {
-//             int complement = target - nums[i];
-            
-//             if (map.containsKey(complement)) {
-//                 return new int[] { map.get(complement), i };
-//             }
-            
-//             map.put(nums[i], i);
-//         }
-        
-//         return new int[0];
-//     }
-// }`
-//       }
-//     ]
-//   };
-
-  // Fetch problem data
+  // ── Fetch problem on mount ──────────────────────────────────────────
   useEffect(() => {
     const fetchProblem = async () => {
       setLoading(true);
       try {
-        
         const response = await axiosClient.get(`/problem/problemById/${problemId}`);
-       
-        
-        const initialCode = response.data.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
+
+        // ✅ Uses langMap — correctly maps "javascript" → "Javascript"
+        const initialCode = response.data.startCode
+          .find(sc => sc.language === langMap[selectedLanguage])
+          ?.initialCode || '// Start coding here';
 
         setProblem(response.data);
-        
         setCode(initialCode);
         setLoading(false);
-        
+
       } catch (error) {
         console.error('Error fetching problem:', error);
         setLoading(false);
@@ -194,90 +49,83 @@ const ProblemPage = () => {
     fetchProblem();
   }, [problemId]);
 
-  // Update code when language changes
+  // ── Update code when language changes ───────────────────────────────
   useEffect(() => {
-    if (problem) {
-      const initialCode = problem.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
-      setCode(initialCode);
-    }
+    if (!problem) return;
+
+    // ✅ Uses langMap — same mapping, consistent behaviour
+    const initialCode = problem.startCode
+      .find(sc => sc.language === langMap[selectedLanguage])
+      ?.initialCode || '// Start coding here';
+
+    setCode(initialCode);
   }, [selectedLanguage, problem]);
 
-  const handleEditorChange = (value) => {
-    setCode(value || '');
-  };
+  // ── Handlers ────────────────────────────────────────────────────────
 
-  const handleEditorDidMount = (editor) => {
-    editorRef.current = editor;
-  };
+  const handleEditorChange = (value) => setCode(value || '');
 
-  const handleLanguageChange = (language) => {
-    setSelectedLanguage(language);
-  };
+  const handleEditorDidMount = (editor) => { editorRef.current = editor; };
+
+  const handleLanguageChange = (language) => setSelectedLanguage(language);
 
   const handleRun = async () => {
     setLoading(true);
     setRunResult(null);
-    
     try {
       const response = await axiosClient.post(`/submission/run/${problemId}`, {
         code,
         language: selectedLanguage
       });
-
       setRunResult(response.data);
-      setLoading(false);
       setActiveRightTab('testcase');
-      
     } catch (error) {
       console.error('Error running code:', error);
-      setRunResult({
-        success: false,
-        error: 'Internal server error'
-      });
-      setLoading(false);
+      setRunResult({ success: false, error: 'Internal server error' });
       setActiveRightTab('testcase');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmitCode = async () => {
     setLoading(true);
     setSubmitResult(null);
-    
     try {
-        const response = await axiosClient.post(`/submission/submit/${problemId}`, {
-        code:code,
+      const response = await axiosClient.post(`/submission/submit/${problemId}`, {
+        code,
         language: selectedLanguage
       });
-
-       setSubmitResult(response.data);
-       setLoading(false);
-       setActiveRightTab('result');
-      
+      setSubmitResult(response.data);
+      setActiveRightTab('result');
     } catch (error) {
       console.error('Error submitting code:', error);
       setSubmitResult(null);
-      setLoading(false);
       setActiveRightTab('result');
+    } finally {
+      setLoading(false);
     }
   };
 
   const getLanguageForMonaco = (lang) => {
-    switch (lang) {
-      case 'javascript': return 'javascript';
-      case 'java': return 'java';
-      case 'cpp': return 'cpp';
-      default: return 'javascript';
-    }
+    const monacoMap = {
+      javascript: 'javascript',
+      java:       'java',
+      cpp:        'cpp',
+    };
+    return monacoMap[lang] || 'javascript';
   };
 
   const getDifficultyColor = (difficulty) => {
-    switch (difficulty) {
-      case 'easy': return 'text-green-500';
-      case 'medium': return 'text-yellow-500';
-      case 'hard': return 'text-red-500';
-      default: return 'text-gray-500';
-    }
+    const colors = {
+      easy:   'text-green-500',
+      medium: 'text-yellow-500',
+      hard:   'text-red-500',
+    };
+    return colors[difficulty] || 'text-gray-500';
   };
+
+  // ── Loading screen ──────────────────────────────────────────────────
 
   if (loading && !problem) {
     return (
@@ -287,42 +135,32 @@ const ProblemPage = () => {
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────
+
   return (
     <div className="h-screen flex bg-base-100">
-      {/* Left Panel */}
+
+      {/* ── Left Panel ── */}
       <div className="w-1/2 flex flex-col border-r border-base-300">
-        {/* Left Tabs */}
+
+        {/* Tabs */}
         <div className="tabs tabs-bordered bg-base-200 px-4">
-          <button 
-            className={`tab ${activeLeftTab === 'description' ? 'tab-active' : ''}`}
-            onClick={() => setActiveLeftTab('description')}
-          >
-            Description
-          </button>
-          <button 
-            className={`tab ${activeLeftTab === 'editorial' ? 'tab-active' : ''}`}
-            onClick={() => setActiveLeftTab('editorial')}
-          >
-            Editorial
-          </button>
-          <button 
-            className={`tab ${activeLeftTab === 'solutions' ? 'tab-active' : ''}`}
-            onClick={() => setActiveLeftTab('solutions')}
-          >
-            Solutions
-          </button>
-          <button 
-            className={`tab ${activeLeftTab === 'submissions' ? 'tab-active' : ''}`}
-            onClick={() => setActiveLeftTab('submissions')}
-          >
-            Submissions
-          </button>
+          {['description', 'editorial', 'solutions', 'submissions'].map(tab => (
+            <button
+              key={tab}
+              className={`tab ${activeLeftTab === tab ? 'tab-active' : ''}`}
+              onClick={() => setActiveLeftTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
-        {/* Left Content */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {problem && (
             <>
+              {/* Description */}
               {activeLeftTab === 'description' && (
                 <div>
                   <div className="flex items-center gap-4 mb-6">
@@ -357,15 +195,17 @@ const ProblemPage = () => {
                 </div>
               )}
 
+              {/* Editorial */}
               {activeLeftTab === 'editorial' && (
                 <div className="prose max-w-none">
                   <h2 className="text-xl font-bold mb-4">Editorial</h2>
                   <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {'Editorial is here for the problem'}
+                    Editorial is here for the problem
                   </div>
                 </div>
               )}
 
+              {/* Solutions */}
               {activeLeftTab === 'solutions' && (
                 <div>
                   <h2 className="text-xl font-bold mb-4">Solutions</h2>
@@ -373,24 +213,31 @@ const ProblemPage = () => {
                     {problem.referenceSolution?.map((solution, index) => (
                       <div key={index} className="border border-base-300 rounded-lg">
                         <div className="bg-base-200 px-4 py-2 rounded-t-lg">
-                          <h3 className="font-semibold">{problem?.title} - {solution?.language}</h3>
+                          <h3 className="font-semibold">
+                            {problem.title} — {solution.language}
+                          </h3>
                         </div>
                         <div className="p-4">
                           <pre className="bg-base-300 p-4 rounded text-sm overflow-x-auto">
-                            <code>{solution?.completeCode}</code>
+                            <code>{solution.completeCode}</code>
                           </pre>
                         </div>
                       </div>
-                    )) || <p className="text-gray-500">Solutions will be available after you solve the problem.</p>}
+                    )) || (
+                      <p className="text-gray-500">
+                        Solutions will be available after you solve the problem.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
+              {/* Submissions */}
               {activeLeftTab === 'submissions' && (
                 <div>
                   <h2 className="text-xl font-bold mb-4">My Submissions</h2>
                   <div className="text-gray-500">
-                    <SubmissionHistory problemId={problemId} />
+                    Your submission history will appear here.
                   </div>
                 </div>
               )}
@@ -399,38 +246,33 @@ const ProblemPage = () => {
         </div>
       </div>
 
-      {/* Right Panel */}
+      {/* ── Right Panel ── */}
       <div className="w-1/2 flex flex-col">
-        {/* Right Tabs */}
+
+        {/* Tabs */}
         <div className="tabs tabs-bordered bg-base-200 px-4">
-          <button 
-            className={`tab ${activeRightTab === 'code' ? 'tab-active' : ''}`}
-            onClick={() => setActiveRightTab('code')}
-          >
-            Code
-          </button>
-          <button 
-            className={`tab ${activeRightTab === 'testcase' ? 'tab-active' : ''}`}
-            onClick={() => setActiveRightTab('testcase')}
-          >
-            Testcase
-          </button>
-          <button 
-            className={`tab ${activeRightTab === 'result' ? 'tab-active' : ''}`}
-            onClick={() => setActiveRightTab('result')}
-          >
-            Result
-          </button>
+          {['code', 'testcase', 'result'].map(tab => (
+            <button
+              key={tab}
+              className={`tab ${activeRightTab === tab ? 'tab-active' : ''}`}
+              onClick={() => setActiveRightTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
-        {/* Right Content */}
+        {/* Content */}
         <div className="flex-1 flex flex-col">
+
+          {/* Code tab */}
           {activeRightTab === 'code' && (
             <div className="flex-1 flex flex-col">
-              {/* Language Selector */}
+
+              {/* Language selector */}
               <div className="flex justify-between items-center p-4 border-b border-base-300">
                 <div className="flex gap-2">
-                  {['javascript', 'java', 'cpp'].map((lang) => (
+                  {['javascript', 'java', 'cpp'].map(lang => (
                     <button
                       key={lang}
                       className={`btn btn-sm ${selectedLanguage === lang ? 'btn-primary' : 'btn-ghost'}`}
@@ -442,7 +284,7 @@ const ProblemPage = () => {
                 </div>
               </div>
 
-              {/* Monaco Editor */}
+              {/* Monaco editor */}
               <div className="flex-1">
                 <Editor
                   height="100%"
@@ -452,38 +294,36 @@ const ProblemPage = () => {
                   onMount={handleEditorDidMount}
                   theme="vs-dark"
                   options={{
-                    fontSize: 14,
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                    insertSpaces: true,
-                    wordWrap: 'on',
-                    lineNumbers: 'on',
-                    glyphMargin: false,
-                    folding: true,
-                    lineDecorationsWidth: 10,
-                    lineNumbersMinChars: 3,
-                    renderLineHighlight: 'line',
-                    selectOnLineNumbers: true,
-                    roundedSelection: false,
-                    readOnly: false,
-                    cursorStyle: 'line',
-                    mouseWheelZoom: true,
+                    fontSize:              14,
+                    minimap:               { enabled: false },
+                    scrollBeyondLastLine:  false,
+                    automaticLayout:       true,
+                    tabSize:               2,
+                    insertSpaces:          true,
+                    wordWrap:              'on',
+                    lineNumbers:           'on',
+                    glyphMargin:           false,
+                    folding:               true,
+                    lineDecorationsWidth:  10,
+                    lineNumbersMinChars:   3,
+                    renderLineHighlight:   'line',
+                    selectOnLineNumbers:   true,
+                    roundedSelection:      false,
+                    readOnly:              false,
+                    cursorStyle:           'line',
+                    mouseWheelZoom:        true,
                   }}
                 />
               </div>
 
-              {/* Action Buttons */}
+              {/* Run / Submit buttons */}
               <div className="p-4 border-t border-base-300 flex justify-between">
-                <div className="flex gap-2">
-                  <button 
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setActiveRightTab('testcase')}
-                  >
-                    Console
-                  </button>
-                </div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setActiveRightTab('testcase')}
+                >
+                  Console
+                </button>
                 <div className="flex gap-2">
                   <button
                     className={`btn btn-outline btn-sm ${loading ? 'loading' : ''}`}
@@ -504,6 +344,7 @@ const ProblemPage = () => {
             </div>
           )}
 
+          {/* Testcase tab */}
           {activeRightTab === 'testcase' && (
             <div className="flex-1 p-4 overflow-y-auto">
               <h3 className="font-semibold mb-4">Test Results</h3>
@@ -513,19 +354,16 @@ const ProblemPage = () => {
                     {runResult.success ? (
                       <div>
                         <h4 className="font-bold">✅ All test cases passed!</h4>
-                        <p className="text-sm mt-2">Runtime: {runResult.runtime+" sec"}</p>
-                        <p className="text-sm">Memory: {runResult.memory+" KB"}</p>
-                        
+                        <p className="text-sm mt-2">Runtime: {runResult.runtime} sec</p>
+                        <p className="text-sm">Memory: {runResult.memory} KB</p>
                         <div className="mt-4 space-y-2">
                           {runResult.testCases.map((tc, i) => (
                             <div key={i} className="bg-base-100 p-3 rounded text-xs">
                               <div className="font-mono">
-                                <div><strong>Input:</strong> {tc.stdin}</div>
+                                <div><strong>Input:</strong>    {tc.stdin}</div>
                                 <div><strong>Expected:</strong> {tc.expected_output}</div>
-                                <div><strong>Output:</strong> {tc.stdout}</div>
-                                <div className={'text-green-600'}>
-                                  {'✓ Passed'}
-                                </div>
+                                <div><strong>Output:</strong>   {tc.stdout}</div>
+                                <div className="text-green-600">✓ Passed</div>
                               </div>
                             </div>
                           ))}
@@ -533,16 +371,16 @@ const ProblemPage = () => {
                       </div>
                     ) : (
                       <div>
-                        <h4 className="font-bold">❌ Error</h4>
+                        <h4 className="font-bold">❌ Some test cases failed</h4>
                         <div className="mt-4 space-y-2">
                           {runResult.testCases.map((tc, i) => (
                             <div key={i} className="bg-base-100 p-3 rounded text-xs">
                               <div className="font-mono">
-                                <div><strong>Input:</strong> {tc.stdin}</div>
+                                <div><strong>Input:</strong>    {tc.stdin}</div>
                                 <div><strong>Expected:</strong> {tc.expected_output}</div>
-                                <div><strong>Output:</strong> {tc.stdout}</div>
-                                <div className={tc.status_id==3 ? 'text-green-600' : 'text-red-600'}>
-                                  {tc.status_id==3 ? '✓ Passed' : '✗ Failed'}
+                                <div><strong>Output:</strong>   {tc.stdout}</div>
+                                <div className={tc.status_id === 3 ? 'text-green-600' : 'text-red-600'}>
+                                  {tc.status_id === 3 ? '✓ Passed' : '✗ Failed'}
                                 </div>
                               </div>
                             </div>
@@ -560,6 +398,7 @@ const ProblemPage = () => {
             </div>
           )}
 
+          {/* Result tab */}
           {activeRightTab === 'result' && (
             <div className="flex-1 p-4 overflow-y-auto">
               <h3 className="font-semibold mb-4">Submission Result</h3>
@@ -571,8 +410,8 @@ const ProblemPage = () => {
                         <h4 className="font-bold text-lg">🎉 Accepted</h4>
                         <div className="mt-4 space-y-2">
                           <p>Test Cases Passed: {submitResult.passedTestCases}/{submitResult.totalTestCases}</p>
-                          <p>Runtime: {submitResult.runtime + " sec"}</p>
-                          <p>Memory: {submitResult.memory + "KB"} </p>
+                          <p>Runtime: {submitResult.runtime} sec</p>
+                          <p>Memory: {submitResult.memory} KB</p>
                         </div>
                       </div>
                     ) : (
@@ -592,6 +431,7 @@ const ProblemPage = () => {
               )}
             </div>
           )}
+
         </div>
       </div>
     </div>

@@ -138,7 +138,7 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     isAuthenticated: false,
-    isVerified: false,      // ← tracks email verification separately
+    isVerified: false,      
     loading: false,
     error: null,
   },
@@ -150,7 +150,6 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-      // ── Register ──────────────────────────────────────────────────
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
