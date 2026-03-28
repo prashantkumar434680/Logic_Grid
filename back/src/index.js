@@ -10,6 +10,7 @@ const problemRouter = require('./Routes/ProblemCreator');
 const submitRouter = require('./Routes/submit');
 const userDataRouter = require('./Routes/userData');
 const passport = require('./config/passport');
+const SolveProblem = require('./Routes/SolveProb');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -24,6 +25,7 @@ app.use(passport.initialize());
 app.use('/user',authRouter);
 app.use('/submission',submitRouter);
 app.use('/problem',problemRouter);
+app.use("/Ai",SolveProblem);
 app.use('/userData',userDataRouter);
 
 

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
 import axiosClient from "../utils/axiosClient"
+import ChatAi from '../components/ChatAi';
 
 const ProblemPage = () => {
   const [problem,          setProblem]          = useState(null);
@@ -41,7 +42,7 @@ const ProblemPage = () => {
         setLoading(false);
 
       } catch (error) {
-        console.error('Error fetching problem:', error);
+        // console.error('Error fetching problem:', error);
         setLoading(false);
       }
     };
@@ -145,7 +146,7 @@ const ProblemPage = () => {
 
         {/* Tabs */}
         <div className="tabs tabs-bordered bg-base-200 px-4">
-          {['description', 'editorial', 'solutions', 'submissions'].map(tab => (
+          {['description', 'editorial', 'solutions', 'submissions','ChatAI'].map(tab => (
             <button
               key={tab}
               className={`tab ${activeLeftTab === tab ? 'tab-active' : ''}`}
@@ -238,6 +239,16 @@ const ProblemPage = () => {
                   <h2 className="text-xl font-bold mb-4">My Submissions</h2>
                   <div className="text-gray-500">
                     Your submission history will appear here.
+                  </div>
+                </div>
+              )}
+
+              {/* ChatAI */}
+              {activeLeftTab === 'ChatAI' && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">ChatAI</h2>
+                  <div className="text-gray-500">
+                    {<ChatAi problem={problem}/>}
                   </div>
                 </div>
               )}
