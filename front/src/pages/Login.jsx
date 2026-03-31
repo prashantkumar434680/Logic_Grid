@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { loginUser } from "../authSlice";
 import { useEffect, useState } from 'react';
+// import { resendVerification } from '../authSlice';
+import VerifyAccount from './VerifyAccount';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -59,6 +61,7 @@ function Stat({ num, label }) {
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState('');
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, loading, error } = useSelector((s) => s.auth);
@@ -69,6 +72,14 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) navigate('/');
+    
+    // Check for verification success message
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('verified') === 'true') {
+      setVerificationMessage('Email verified successfully! You can now login.');
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [isAuthenticated, navigate]);
 
   const onSubmit = (data) => dispatch(loginUser(data));
@@ -144,6 +155,13 @@ export default function Login() {
               Enter your credentials to continue
             </p>
 
+            {/* Success message for email verification */}
+            {verificationMessage && (
+              <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-green-500/10 border border-green-500/25">
+                <p className="text-[12px] text-green-300">{verificationMessage}</p>
+              </div>
+            )}
+
             {/* API error banner */}
             {error && (
               <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-red-500/10 border border-red-500/25">
@@ -199,6 +217,15 @@ export default function Login() {
                 </span>
               </div>
 
+               <div className="flex justify-end -mt-2 mb-5">
+                <span
+                  onClick={() => navigate("/verify")}
+                  className="text-[12px] text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
+                >
+                  Verify Email?
+                </span>
+              </div>
+            
               <button
                 type="submit"
                 disabled={loading}

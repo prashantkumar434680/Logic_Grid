@@ -1,91 +1,128 @@
-const mongoose = require('mongoose');
-const {Schema} = mongoose;
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const userSchema = new Schema({
-    firstName:{
-        type: String,
-        required: true,
-        minLength:3,
-        maxLength:20
+const userSchema = new Schema(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      minLength: 3,
+      maxLength: 20,
     },
-    lastName:{
-        type:String,
-        minLength:3,
-        maxLength:20,
+
+    lastName: {
+      type: String,
+      minLength: 3,
+      maxLength: 20,
     },
-    emailId:{
-        type:String,
-        required:true,
-        unique:true,
-        trim: true,
-        lowercase:true,
-        immutable: true,
+
+    emailId: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      immutable: true,
     },
-    verifyotp:{
-        type:String
+
+    password: {
+      type: String,
+      required: true,
+      select: false,
     },
-    verifyotpExpireAt: {
-        type: Number, default:0
+
+    // Email Verification (LINK BASED)
+    verifyToken: {
+      type: String,
+      default: null,
     },
-    isAccountVerified:{type: Number, default: false},
-    verificationToken:{
-        type:String
+
+    verifyTokenExpireAt: {
+      type: Number, // timestamp
+      default: null,
     },
-    resetOtp:{ type:String, default:''},
-    resetOtpExpireAt:{type:Number, default:0},
-    verificationTokenExpires:{
-        type:Date
+
+    isAccountVerified: {
+      type: Boolean,
+      default: false,
     },
-    resetPasswordToken: {
-        type: String
+    resetPasswordToken:   { type: String, default: null, select: false },
+    resetPasswordTokenExpires: { type: Date,   default: null, select: false },
+    resetOtp: {
+      type: String,
+      default: null,
     },
-    resetPasswordExpires: {
-        type: Date
+
+    resetOtpExpireAt: {
+      type: Number,
+      default: null,
     },
+
+    isOtpVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    otpVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // OAuth
     googleId: {
-       type: String
+      type: String,
+      default: null,
     },
+
     githubId: {
-       type: String
+      type: String,
+      default: null,
     },
+
+    //  Profile
     avatar: {
-       type: String
+      type: String,
+      default: null,
     },
+
     bio: {
-       type: String,
-       maxLength: 200
+      type: String,
+      maxLength: 200,
     },
-    googleId: {
-       type: String
+
+    age: {
+      type: Number,
+      min: 6,
+      max: 80,
     },
-    age:{
-        type:Number,
-        min:6,
-        max:80,
+
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
-    role:{
-        type:String,
-        enum:['user','admin'],
-        default: 'user'
-    },
-    problemSolved:{
-        type:[String]
-    },
-    password:{
-        type:String,
-        required: true,
-        select:false
-    }
-},{
-    timestamps:true
+
+    problemSolved: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "problem",
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Cleanup submissions on delete
+userSchema.post("findOneAndDelete", async function (userInfo) {
+  if (userInfo) {
+    await mongoose.model("submission").deleteMany({
+      userId: userInfo._id,
+    });
+  }
 });
 
-userSchema.post('findOneAndDelete', async function (userInfo){
-    if(userInfo){
-        await mongoose.model('submission').deleteMany({userId:userInfo._id});
-    }
-})
-
-const User = mongoose.model("user",userSchema);
+const User = mongoose.model("user", userSchema);
 
 module.exports = User;

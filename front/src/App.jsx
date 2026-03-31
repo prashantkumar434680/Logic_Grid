@@ -10,13 +10,14 @@ import ProblemPage from "./pages/ProblemPage";
 import Admin from "./pages/Admin";
 import AdminDelete from "./components/AdminDelete";
 import ResetPassword from "./pages/ResetPassword";
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import VerifyAccount from "./pages/VerifyAccount";
+// import { GoogleOAuthProvider } from '@react-oauth/google';
 
 
 function App(){
   
   const dispatch = useDispatch();
-  const {isAuthenticated,user,loading} = useSelector((state)=>state.auth);
+  const {isAuthenticated,user} = useSelector((state)=>state.auth);
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   // "dotenv".config();
 
@@ -27,34 +28,22 @@ function App(){
     });
   }, [dispatch]);
 
-    if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <span className="loading loading-spinner loading-lg"></span>
-    </div>;
-  }
-
-  
   if (!authCheckComplete) {
     return <div className="min-h-screen flex items-center justify-center">
       <span className="loading loading-spinner loading-lg"></span>
     </div>;
   }
 
-  // const GoogleAuthWrapper = ()=>{
-  //   return(
-  //     <GoogleAuthWrapper cientId={process.env.clientId}>
-  //       <Login></Login>
-  //     </GoogleAuthWrapper>
-  //   )
-  // }
 
 
   return(
   <>
     <Routes>
       <Route path="/" element={isAuthenticated ?<Homepage></Homepage>:<Navigate to="/signup" />}></Route>
+      <Route path="/verify" element={<VerifyAccount />} />
       <Route path="/login" element={isAuthenticated?<Navigate to="/" />:<Login/>}></Route>
       <Route path="/signup" element={isAuthenticated?<Navigate to="/" />:<Signup></Signup>}></Route>
+      <Route path="/verify" element={<VerifyAccount/>}></Route>
       <Route path="/reset-password" element={isAuthenticated?<Navigate to="/" />:<ResetPassword/>}></Route>
       <Route path="/admin" element={isAuthenticated && user?.role === 'admin' ? <Admin/>: <Navigate to="/" /> } ></Route>
       <Route path="/admin/create" element={isAuthenticated && user?.role === 'admin' ? <AdminPanel/> : <Navigate to="/" /> } ></Route>

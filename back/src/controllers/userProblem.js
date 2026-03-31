@@ -184,15 +184,10 @@ const getAllProblem = async(req,res)=>{
   try{
      
     const getProblem = await Problem.find({}).select('_id title difficulty tags');
-
-   if(getProblem.length==0)
-    return res.status(404).send("Problem is Missing");
-
-
-   res.status(200).send(getProblem);
+    res.status(200).json(getProblem);
   }
   catch(err){
-    res.status(500).send("Error: "+err);
+    res.status(500).json({ message: "Failed to fetch problems" });
   }
 }
 
@@ -207,12 +202,12 @@ const solvedAllProblembyUser =  async(req,res)=>{
         path:"problemSolved",
         select:"_id title difficulty tags"
       });
-      
-      res.status(200).send(user.problemSolved);
+
+      res.status(200).json(user?.problemSolved || []);
 
     }
     catch(err){
-      res.status(500).send("Server Error");
+      res.status(500).json({ message: "Failed to fetch solved problems" });
     }
 }
 

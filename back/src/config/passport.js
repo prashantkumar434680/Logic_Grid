@@ -31,8 +31,8 @@ passport.use(
           if (!user.googleId) {
             user.googleId = googleId;
           }
-          if (!user.verified) {
-            user.verified = true;
+          if (!user.isAccountVerified) {
+            user.isAccountVerified = true;
           }
           if (!user.avatar && avatar) {
             user.avatar = avatar;
@@ -49,7 +49,7 @@ passport.use(
           emailId,
           googleId,
           avatar,
-          verified: true, // Google already verified their email
+          isAccountVerified: true,
           password: hashedPassword,
           role: 'user'
         });
@@ -90,8 +90,8 @@ passport.use(
           if (!user.githubId) {
             user.githubId = githubId;
           }
-          if (!user.verified) {
-            user.verified = true;
+          if (!user.isAccountVerified) {
+            user.isAccountVerified = true;
           }
           if (!user.avatar && avatar) {
             user.avatar = avatar;
@@ -108,7 +108,7 @@ passport.use(
           emailId,
           githubId,
           avatar,
-          verified: true,
+          isAccountVerified: true,
           password: hashedPassword,
           role: 'user'
         });

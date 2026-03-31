@@ -1,9 +1,10 @@
 const express = require('express');
 
 const authRouter =  express.Router();
-const {register, sendVerifyOtp, verifyEmail, sendResetOtp, resetPassword, login,logout, adminRegister,deleteProfile} = require('../controllers/userAuthent')
+const {verifyResetOTP,sendVerificationLink, verifyEmail, resendVerification, register, sendResetOtp, resetPassword, login,logout,adminRegister,deleteProfile} = require('../controllers/userAuthent')
 const userMiddleware = require("../middleware/userMiddleware");
 const adminMiddleware = require('../middleware/adminMiddleware');
+const User = require('../Models/User');
 
 const rateLimit = require("express-rate-limit");
 const passport = require("../config/passport");
@@ -11,8 +12,20 @@ const jwt = require("jsonwebtoken");
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: 50, // Increased from 10 to 50
   message: "Too many requests from this IP, please try again later",
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 registrations per 15 minutes per IP
+  message: "Too many registration attempts, please try again later",
+});
+
+const verificationLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // 10 verification attempts per 5 minutes
+  message: "Too many verification attempts, please try again later",
 });
 
 const resetPasswordLimiter = rateLimit({
@@ -29,15 +42,17 @@ const loginLimiter = rateLimit({
 
 
 // Register
-authRouter.post('/register',authLimiter, register);
-authRouter.post('/login',loginLimiter, login);
+authRouter.post('/register', registerLimiter, register);
+authRouter.get('/verify-email/:token', verifyEmail); // No rate limiting for email verification links
+authRouter.post('/send-verification-link', userMiddleware, verificationLimiter, sendVerificationLink);
+authRouter.post('/resend-verification', verificationLimiter, resendVerification); // Public resend endpoint
+authRouter.post('/login', loginLimiter, login);
 authRouter.post('/logout', userMiddleware, logout);
 authRouter.post('/admin/register', adminMiddleware ,adminRegister);
 authRouter.delete('/deleteProfile',userMiddleware,deleteProfile);
-authRouter.post('/send-verify-otp', userMiddleware, sendVerifyOtp);
-authRouter.post('/verify-account', userMiddleware,authLimiter, verifyEmail);
-authRouter.post('/send-reset-otp', resetPasswordLimiter, sendResetOtp);
-authRouter.post('/reset-password',resetPasswordLimiter, resetPassword);
+authRouter.post('/send-reset-otp', sendResetOtp);
+authRouter.post('/verify-reset-otp', verifyResetOTP);
+authRouter.post('/reset-password', resetPassword);
 
 authRouter.get('/check',userMiddleware,(req,res)=>{
 
@@ -167,4 +182,28 @@ authRouter.get('/oauth-test', (req, res) => {
     baseURL: process.env.BASE_URL,
     frontendURL: process.env.FRONTEND_URL
   });
+});// Test 
+
+authRouter.get('/test-user/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await User.findOne({ emailId: email });
+    
+    if (!user) {
+      return res.json({ message: "User not found" });
+    }
+    
+    res.json({
+      user: {
+        firstName: user.firstName,
+        emailId: user.emailId,
+        isAccountVerified: user.isAccountVerified,
+        verifyToken: user.verifyToken ? "Present" : "None",
+        verifyTokenExpireAt: user.verifyTokenExpireAt,
+        tokenExpired: user.verifyTokenExpireAt ? user.verifyTokenExpireAt < Date.now() : "No token"
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });

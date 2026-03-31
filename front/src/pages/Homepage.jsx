@@ -182,11 +182,14 @@ function UserDropdown({ user, onLogout }) {
 export default function Homepage() {
   const dispatch = useDispatch();
   const { user } = useSelector((s) => s.auth);
-
-  const [problems,       setProblems]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [problems, setProblems] = useState([]);
   const [solvedProblems, setSolvedProblems] = useState([]);
-  const [filters,        setFilters]        = useState({ difficulty: 'all', tag: 'all', status: 'all' });
-  const [loading,        setLoading]        = useState(true); // ✅ loading state added
+  const [filters, setFilters] = useState({
+    difficulty: 'all',
+    tag: 'all',
+    status: 'all'
+  });
 
   useEffect(() => {
     // ✅ fetch problems and solved together
@@ -194,18 +197,22 @@ export default function Homepage() {
       setLoading(true);
       try {
         const { data } = await axiosClient.get('/problem/getAllProblem');
-        setProblems(data);
+        setProblems(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error('Failed to fetch problems:', e);
+        setProblems([]);
       }
 
       if (user) {
         try {
           const { data } = await axiosClient.get('/problem/problemSolvedByUser');
-          setSolvedProblems(data);
+          setSolvedProblems(Array.isArray(data) ? data : []);
         } catch (e) {
           console.error('Failed to fetch solved problems:', e);
+          setSolvedProblems([]);
         }
+      } else {
+        setSolvedProblems([]);
       }
 
       setLoading(false);
@@ -220,30 +227,31 @@ export default function Homepage() {
   };
 
   const isSolved = (problemId) => {
-  return solvedProblems.some(sp => {
-    // Structure 1 — sp is the problem itself
-    if (sp._id === problemId) return true
+    return solvedProblems.some((sp) => {
+      if (sp?._id === problemId) return true;
+      if (sp?.problemId === problemId) return true;
+      if (sp?.problemId?._id === problemId) return true;
+      if (sp?.problem?._id === problemId) return true;
+      if (sp === problemId) return true;
+      return false;
+    });
+  };
 
-    // Structure 2 — sp has problemId field
-    if (sp.problemId === problemId) return true
-    if (sp.problemId?._id === problemId) return true
+  // const filtered = problems.filter(p => {
+  //   if (filters.difficulty !== 'all' && p.difficulty !== filters.difficulty) return false;
+  //   if (filters.tag       !== 'all' && p.tags       !== filters.tag)       return false;
+  //   if (filters.status === 'solved' && !isSolved(p._id))                   return false;
+  //   return true;
+  // });
 
-    // Structure 3 — sp has problem nested
-    if (sp.problem?._id === problemId) return true
-
-    // Structure 4 — sp is just a string ID
-    if (sp === problemId) return true
-
-    return false
-  })
-}
-
-  const filtered = problems.filter(p => {
-    if (filters.difficulty !== 'all' && p.difficulty !== filters.difficulty) return false;
-    if (filters.tag       !== 'all' && p.tags       !== filters.tag)       return false;
-    if (filters.status === 'solved' && !isSolved(p._id))                   return false;
-    return true;
+  const filtered = problems.filter(problem => {
+    const difficultyMatch = filters.difficulty === 'all' || problem.difficulty === filters.difficulty;
+    const tagMatch = filters.tag === 'all' || problem.tags === filters.tag;
+    const statusMatch = filters.status === 'all' || isSolved(problem._id);
+    return difficultyMatch && tagMatch && statusMatch;
   });
+
+
 
   const solvedCount = solvedProblems.length;
 
