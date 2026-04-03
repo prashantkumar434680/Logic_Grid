@@ -12,7 +12,7 @@ import { GoogleLogin } from '@react-oauth/google';
 
 
   const handleSocialLogin = (provider) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
     window.location.href = `${API_BASE_URL}/user/${provider}`;
   };
 
