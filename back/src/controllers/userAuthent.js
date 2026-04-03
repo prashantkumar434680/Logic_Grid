@@ -263,16 +263,17 @@ const sendResetOtp = async (req, res) => {
     );
 
     user.resetOtp                  = otp;
-    user.resetOtpExpireAt          = Date.now() + 5 * 60 * 1000;       // ✅ timestamp not duration
+    user.resetOtpExpireAt          = Date.now() + 5 * 60 * 1000;  
     user.resetPasswordToken        = token;
-    user.resetPasswordTokenExpires = Date.now() + 5 * 60 * 1000;       // ✅ timestamp not duration
+    user.resetPasswordTokenExpires = Date.now() + 5 * 60 * 1000;      
     await user.save();
 
     await transporter.sendMail({
       from:    process.env.SENDER_EMAIL,
       to:      emailId,
       subject: "Password Reset OTP - LogicGrid",
-      text:    `Hello ${user.firstName},\n\nYour password reset OTP is: ${otp}\n\nExpires in 5 minutes.\n\nIgnore if you didn't request this.`,
+      text:    `Hello ${user.firstName},\n\nYour password reset OTP is: 
+      ${otp}\n\nExpires in 5 minutes.\n\nIgnore if you didn't request this.`,
     });
 
     res.cookie('resetToken', token, {
@@ -288,7 +289,6 @@ const sendResetOtp = async (req, res) => {
     console.error("sendResetOtp error:", err);
   }
 };
-
 
 const verifyResetOTP = async (req, res) => {
   try {
@@ -351,7 +351,6 @@ const verifyResetOTP = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 const resetPassword = async (req, res) => {
   try {
@@ -445,7 +444,6 @@ const login = async (req,res)=>{
     }
 }
 
-
 const logout = async(req,res)=>{
 
     try{
@@ -467,7 +465,6 @@ const logout = async(req,res)=>{
        res.status(503).send("Error: "+err);
     }
 }
-
 
 const adminRegister = async(req,res)=>{
     try{
@@ -510,8 +507,6 @@ const deleteProfile = async(req,res)=>{
         res.status(500).send("Internal Server Error");
     }
 }
-
-
 
 const resendVerification = async (req, res) => {
   try {
@@ -590,7 +585,5 @@ This link will expire in 15 minutes.
     });
   }
 };
-
-
 
 module.exports = {verifyResetOTP,sendVerificationLink, verifyEmail, resendVerification, register, sendResetOtp, resetPassword, login,logout,adminRegister,deleteProfile};
