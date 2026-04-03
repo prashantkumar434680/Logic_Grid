@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const {Schema} = mongoose;
 
 const videoSchema = new Schema({
     problemId: {
@@ -32,6 +32,6 @@ const videoSchema = new Schema({
     timestamps: true
 })
 
-const solutionVideo = mongoose.Model('solutionVideo', videoSchema);
+const solutionVideo = mongoose.model('solutionVideo', videoSchema);
 
 module.exports = solutionVideo;

@@ -11,6 +11,7 @@ const submitRouter = require('./Routes/submit');
 const userDataRouter = require('./Routes/userData');
 const passport = require('./config/passport');
 const SolveProblem = require('./Routes/SolveProb');
+const videoRouter = require('./Routes/videoCreator');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -27,7 +28,7 @@ app.use('/submission',submitRouter);
 app.use('/problem',problemRouter);
 app.use("/Ai",SolveProblem);
 app.use('/userData',userDataRouter);
-
+app.use('/video',videoRouter);
 
 const InitalizeConnection = async()=>{
     try{
