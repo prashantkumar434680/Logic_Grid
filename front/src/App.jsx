@@ -13,6 +13,8 @@ import ResetPassword from "./pages/ResetPassword";
 import VerifyAccount from "./pages/VerifyAccount";
 import AdminUpload from "./components/AdminUpload";
 import AdminVideo from "./components/AdminVideo";
+import AdminUpdate from "./components/AdminUpdate";
+import UpdateProblem from "./components/UpdateProblem";
 
 // import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -52,9 +54,10 @@ function App(){
       <Route path="/admin/create" element={isAuthenticated && user?.role === 'admin' ? <AdminPanel/> : <Navigate to="/" /> } ></Route>
       <Route path="/admin/delete" element={isAuthenticated && user?.role === 'admin' ? <AdminDelete/> : <Navigate to="/" /> } ></Route>
       <Route path="/admin/video" element={isAuthenticated && user?.role === 'admin' ? <AdminVideo/> : <Navigate to='/' /> } ></Route>
+      <Route path="/admin/update/:problemId" element={isAuthenticated && user?.role === 'admin' ? <UpdateProblem/> : <Navigate to="/" /> } ></Route>
+      <Route path="/admin/update" element={isAuthenticated && user?.role === 'admin' ? <AdminUpdate/> : <Navigate to="/" /> } ></Route>
       <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === 'admin' ? <AdminUpload/> : <Navigate to='/' /> } ></Route>
       <Route path="/problem/:problemId" element={ <ProblemPage/> } ></Route>
-      <Route path="/admin" element={<AdminPanel/>}></Route>
       {/* <Route 
         path="/admin" 
         element={

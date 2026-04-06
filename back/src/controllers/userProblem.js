@@ -3,6 +3,28 @@ const Problem = require("../Models/Problem");
 const User = require("../Models/User");
 const Submission = require("../Models/submission");
 
+const formatJudgeError = (test, language, index) => {
+  const parts = [];
+
+  if (test.status?.description) {
+    parts.push(test.status.description);
+  }
+
+  if (test.compile_output) {
+    parts.push(`Compile: ${test.compile_output}`);
+  }
+
+  if (test.stderr) {
+    parts.push(`Stderr: ${test.stderr}`);
+  }
+
+  if (test.stdout && test.status_id !== 3) {
+    parts.push(`Stdout: ${test.stdout}`);
+  }
+
+  return `Validation failed for ${language} visible test case ${index + 1}. ${parts.join(' ').trim()}`.trim();
+};
+
 const createProblem = async (req,res)=>{
 
     const {title,description,difficulty,tags,
@@ -44,9 +66,10 @@ const createProblem = async (req,res)=>{
 
        console.log(testResult);
 
-       for(const test of testResult){
+       for(let index = 0; index < testResult.length; index++){
+        const test = testResult[index];
         if(test.status_id!=3){
-         return res.status(400).send("Error Occured");
+         return res.status(400).json({ message: formatJudgeError(test, language, index) });
         }
        }
 
@@ -63,7 +86,7 @@ const createProblem = async (req,res)=>{
       res.status(201).send("Problem Saved Successfully");
     }
     catch(err){
-        res.status(400).send("Error: "+err);
+        res.status(400).json({ message: err.message || `Error: ${err}` });
     }
 }
 
@@ -117,21 +140,22 @@ const updateProblem = async (req,res)=>{
 
     //  console.log(testResult);
 
-     for(const test of testResult){
+     for(let index = 0; index < testResult.length; index++){
+      const test = testResult[index];
       if(test.status_id!=3){
-       return res.status(400).send("Error Occured");
+       return res.status(400).json({ message: formatJudgeError(test, language, index) });
       }
      }
 
     }
 
 
-  const newProblem = await Problem.findByIdAndUpdate(id , {...req.body}, {runValidators:true, new:true});
+  const newProblem = await Problem.findByIdAndUpdate(id , {...req.body}, {runValidators:true, returnDocument: 'after'});
    
   res.status(200).send(newProblem);
   }
   catch(err){
-      res.status(500).send("Error: "+err);
+      res.status(500).json({ message: err.message || `Error: ${err}` });
   }
 }
 
@@ -175,7 +199,7 @@ const getProblemById = async(req,res)=>{
    res.status(200).send(getProblem);
   }
   catch(err){
-    res.status(500).send("Error: "+err);
+    res.status(500).send("Error: okay "+err);
   }
 }
 

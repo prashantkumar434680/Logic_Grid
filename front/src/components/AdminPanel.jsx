@@ -85,7 +85,11 @@ function AdminPanel() {
       alert('Problem created successfully!');
       navigate('/');
     } catch (error) {
-      alert(`Error: ${error.response?.data?.message || error.message}`);
+      const message =
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message;
+      alert(`Error: ${message}`);
     }
   };
 

@@ -3,7 +3,7 @@ const solutionVideo = require('../Models/solutionVideo');
 const Problem = require('../Models/Problem');
 const cloudinary = require('cloudinary').v2;
 const {sanitizeFilter} = require('mongoose');
-const SolutionVideo = require('../../../14Dev/backend/src/models/solutionVideo');
+const SolutionVideo = require('../Models/solutionVideo');
 
 cloudinary.config({
     cloud_name: process.env.cloudinary_cloud_name,
