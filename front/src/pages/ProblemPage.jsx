@@ -4,6 +4,7 @@ import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
 import axiosClient from "../utils/axiosClient"
 import ChatAi from '../components/ChatAi';
+import SubmissionHistory from '../components/SubmissionHistory';
 
 const ProblemPage = () => {
   const [problem,          setProblem]          = useState(null);
@@ -18,11 +19,19 @@ const ProblemPage = () => {
   const { problemId } = useParams();
   const { handleSubmit } = useForm();
 
-  // ✅ Defined once — used in BOTH useEffects
-  const langMap = {
-    cpp:        "C++",
-    java:       "Java",
-    javascript: "JavaScript",
+  const getLanguageAliases = (language) => {
+    const aliases = {
+      cpp: ['C++'],
+      java: ['Java'],
+      javascript: ['JavaScript', 'Javascript'],
+    };
+
+    return aliases[language] || [];
+  };
+
+  const getInitialCode = (startCode = [], language) => {
+    const aliases = getLanguageAliases(language);
+    return startCode.find((sc) => aliases.includes(sc.language))?.initialCode || '';
   };
 
   // ── Fetch problem on mount ──────────────────────────────────────────
@@ -31,11 +40,7 @@ const ProblemPage = () => {
       setLoading(true);
       try {
         const response = await axiosClient.get(`/problem/problemById/${problemId}`);
-
-        // ✅ Uses langMap — correctly maps "javascript" → "Javascript"
-        const initialCode = response.data.startCode
-          .find(sc => sc.language === langMap[selectedLanguage])
-          ?.initialCode || '// Start coding here';
+        const initialCode = getInitialCode(response.data.startCode, selectedLanguage);
 
         setProblem(response.data);
         setCode(initialCode);
@@ -54,10 +59,7 @@ const ProblemPage = () => {
   useEffect(() => {
     if (!problem) return;
 
-    // ✅ Uses langMap — same mapping, consistent behaviour
-    const initialCode = problem.startCode
-      .find(sc => sc.language === langMap[selectedLanguage])
-      ?.initialCode || '// Start coding here';
+    const initialCode = getInitialCode(problem.startCode, selectedLanguage);
 
     setCode(initialCode);
   }, [selectedLanguage, problem]);
@@ -81,8 +83,12 @@ const ProblemPage = () => {
       setRunResult(response.data);
       setActiveRightTab('testcase');
     } catch (error) {
-      console.error('Error running code:', error);
-      setRunResult({ success: false, error: 'Internal server error' });
+      const message =
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message ||
+        'Internal server error';
+      setRunResult({ success: false, error: message, testCases: [] });
       setActiveRightTab('testcase');
     } finally {
       setLoading(false);
@@ -100,8 +106,17 @@ const ProblemPage = () => {
       setSubmitResult(response.data);
       setActiveRightTab('result');
     } catch (error) {
-      console.error('Error submitting code:', error);
-      setSubmitResult(null);
+      const message =
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message ||
+        'Internal server error';
+      setSubmitResult({
+        accepted: false,
+        error: message,
+        passedTestCases: 0,
+        totalTestCases: 0,
+      });
       setActiveRightTab('result');
     } finally {
       setLoading(false);
@@ -237,9 +252,7 @@ const ProblemPage = () => {
               {activeLeftTab === 'submissions' && (
                 <div>
                   <h2 className="text-xl font-bold mb-4">My Submissions</h2>
-                  <div className="text-gray-500">
-                    Your submission history will appear here.
-                  </div>
+                  <SubmissionHistory problemId={problemId} />
                 </div>
               )}
 
@@ -368,7 +381,7 @@ const ProblemPage = () => {
                         <p className="text-sm mt-2">Runtime: {runResult.runtime} sec</p>
                         <p className="text-sm">Memory: {runResult.memory} KB</p>
                         <div className="mt-4 space-y-2">
-                          {runResult.testCases.map((tc, i) => (
+                          {(runResult.testCases || []).map((tc, i) => (
                             <div key={i} className="bg-base-100 p-3 rounded text-xs">
                               <div className="font-mono">
                                 <div><strong>Input:</strong>    {tc.stdin}</div>
@@ -382,9 +395,9 @@ const ProblemPage = () => {
                       </div>
                     ) : (
                       <div>
-                        <h4 className="font-bold">❌ Some test cases failed</h4>
+                        <h4 className="font-bold">❌ {runResult.error || 'Some test cases failed'}</h4>
                         <div className="mt-4 space-y-2">
-                          {runResult.testCases.map((tc, i) => (
+                          {(runResult.testCases || []).map((tc, i) => (
                             <div key={i} className="bg-base-100 p-3 rounded text-xs">
                               <div className="font-mono">
                                 <div><strong>Input:</strong>    {tc.stdin}</div>

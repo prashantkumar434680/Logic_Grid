@@ -242,16 +242,13 @@ const submittedProblem = async(req,res)=>{
     const userId = req.result._id;
     const problemId = req.params.pid;
 
-  const ans = await Submission.find({userId,problemId});
+  const ans = await Submission.find({userId,problemId}).sort({ createdAt: -1 });
   
-  if(ans.length==0)
-    res.status(200).send("No Submission is persent");
-
-  res.status(200).send(ans);
+  return res.status(200).json(ans);
 
   }
   catch(err){
-     res.status(500).send("Internal Server Error");
+     res.status(500).json({ message: "Internal Server Error" });
   }
 }
 

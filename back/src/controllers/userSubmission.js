@@ -14,7 +14,7 @@ const submitCode = async (req,res)=>{
        let {code,language} = req.body;
 
       if(!userId||!code||!problemId||!language)
-        return res.status(400).send("Some field missing");
+        return res.status(400).json({ message: "Some field missing" });
       
 
       if(language==='cpp')
@@ -24,10 +24,15 @@ const submitCode = async (req,res)=>{
       
     //    Fetch the problem from database
        const problem =  await Problem.findById(problemId);
+       if(!problem)
+        return res.status(404).json({ message: "Problem not found" });
     //    testcases(Hidden)
     
     //   Kya apne submission store kar du pehle....
     // console.log("Hello");
+    if(!problem.hiddenTestCases?.length)
+      return res.status(400).json({ message: "No hidden test cases found for this problem" });
+
     const submittedResult = await Submission.create({
           userId,
           problemId,
@@ -98,16 +103,16 @@ const submitCode = async (req,res)=>{
     
     // req.result == user Information
 
-    const alreadySolved = req.result.problemSolved.some(
+    const accepted = (status == 'accepted')
+    const alreadySolved = (req.result.problemSolved || []).some(
       (id) => id.toString() === problemId
     );
 
-    if(!alreadySolved){
+    if(accepted && !alreadySolved){
       req.result.problemSolved.push(problemId);
       await req.result.save();
     }
-    
-    const accepted = (status == 'accepted')
+
     res.status(201).json({
       accepted,
       totalTestCases: submittedResult.testCasesTotal,
@@ -118,7 +123,7 @@ const submitCode = async (req,res)=>{
        
     }
     catch(err){
-      res.status(500).send("Internal Server Error "+ err);
+      res.status(500).json({ message: err.message || `Internal Server Error: ${err}` });
     }
 }
 
@@ -133,13 +138,18 @@ const runCode = async(req,res)=>{
       let {code,language} = req.body;
 
      if(!userId||!code||!problemId||!language)
-       return res.status(400).send("Some field missing");
+       return res.status(400).json({ message: "Some field missing" });
 
    //    Fetch the problem from database
       const problem =  await Problem.findById(problemId);
+      if(!problem)
+       return res.status(404).json({ message: "Problem not found" });
    //    testcases(Hidden)
       if(language==='cpp')
         language='c++'
+
+      if(!problem.visibleTestCases?.length)
+       return res.status(400).json({ message: "No visible test cases found for this problem" });
 
    //    Judge0 code ko submit karna hai
 
@@ -193,7 +203,7 @@ const runCode = async(req,res)=>{
       
    }
    catch(err){
-     res.status(500).send("Internal Server Error "+ err);
+     res.status(500).json({ message: err.message || `Internal Server Error: ${err}` });
    }
 }
 

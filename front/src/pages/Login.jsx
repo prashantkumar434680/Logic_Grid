@@ -208,23 +208,23 @@ export default function Login() {
               </Field>
 
               {/* Forgot password */}
-              <div className="flex justify-end -mt-2 mb-5">
-                <span
-                  onClick={() => navigate("/reset-password")}
-                  className="text-[12px] text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
-                >
-                  Forgot password?
-                </span>
-              </div>
+ <div className="flex justify-between items-center mt-2 mb-5 text-xs">
 
-               <div className="flex justify-end -mt-2 mb-5">
-                <span
-                  onClick={() => navigate("/verify")}
-                  className="text-[12px] text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
-                >
-                  Verify Email?
-                </span>
-              </div>
+  <span
+    onClick={() => navigate("/reset-password")}
+    className="text-xs text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
+  >
+    Forgot password?
+  </span>
+
+  <span
+    onClick={() => navigate("/verify")}
+    className="text-xs text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
+  >
+    Verify Email
+  </span>
+
+</div>
             
               <button
                 type="submit"

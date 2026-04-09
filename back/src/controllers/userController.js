@@ -7,7 +7,21 @@ const getUserData = async (req,res)=>{
     if(!user){
         res.json({success:false, message:"User Not Found"});
     }
-        res.json({success:true, name:user.firstName,isAccountVerified:user.isAccountVerified}); 
+        res.json({
+            success:true,
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName || "",
+                emailId: user.emailId,
+                avatar: user.avatar || null,
+                avatarPublicId: user.avatarPublicId || null,
+                bio: user.bio || "",
+                age: user.age ?? null,
+                role: user.role,
+                isAccountVerified: user.isAccountVerified
+            }
+        }); 
     }
 catch(err){
     res.json({success:false, message:"Error: "+err.message});

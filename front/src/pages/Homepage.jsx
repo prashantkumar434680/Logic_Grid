@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
 import axiosClient from '../utils/axiosClient';
-import { logoutUser } from '../authSlice';
+import axios from 'axios';
+import { checkAuth, logoutUser } from '../authSlice';
 
 // ── Animated grid ─────────────────────────────────────────────────────
 
@@ -89,9 +90,250 @@ function StatCard({ num, label }) {
   );
 }
 
+function ProfileModal({ user, onClose, onSaved }) {
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [age, setAge] = useState(user?.age ?? '');
+  const [avatar, setAvatar] = useState(user?.avatar || null);
+  const [avatarPublicId, setAvatarPublicId] = useState(user?.avatarPublicId || null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const previewUrl = removeAvatar ? null : avatar;
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    setError('');
+
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose a valid image file');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      event.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+    setRemoveAvatar(false);
+  };
+
+  const uploadAvatar = async () => {
+    if (!selectedFile) {
+      return {
+        secureUrl: avatar,
+        publicId: avatarPublicId,
+      };
+    }
+
+    setUploading(true);
+
+    try {
+      const { data: signatureData } = await axiosClient.get('/userData/profile/upload-signature');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('signature', signatureData.signature);
+      formData.append('timestamp', signatureData.timestamp);
+      formData.append('public_id', signatureData.public_id);
+      formData.append('folder', signatureData.folder);
+      formData.append('api_key', signatureData.api_key);
+
+      const uploadResponse = await axios.post(signatureData.upload_url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return {
+        secureUrl: uploadResponse.data.secure_url,
+        publicId: uploadResponse.data.public_id,
+      };
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSaving(true);
+
+    try {
+      let nextAvatar = avatar;
+      let nextAvatarPublicId = avatarPublicId;
+
+      if (selectedFile) {
+        const uploadResult = await uploadAvatar();
+        nextAvatar = uploadResult.secureUrl;
+        nextAvatarPublicId = uploadResult.publicId;
+      }
+
+      await axiosClient.patch('/userData/profile', {
+        firstName,
+        lastName,
+        bio,
+        age,
+        avatar: removeAvatar ? null : nextAvatar,
+        avatarPublicId: removeAvatar ? null : nextAvatarPublicId,
+        removeAvatar,
+      });
+
+      await onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4">
+      <div
+        className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#101019] p-6 text-white shadow-2xl"
+        style={{ backdropFilter: 'blur(16px)' }}
+      >
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h2 className="font-['Instrument_Serif'] text-[28px] tracking-tight">Edit profile</h2>
+            <p className="mt-1 text-[12px] text-white/35">Update your name and profile picture.</p>
+          </div>
+          <button onClick={onClose} className="text-white/40 transition-colors hover:text-white/70">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="flex flex-col gap-5 md:flex-row">
+            <div className="md:w-1/3">
+              <div className="mb-3 flex justify-center">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Profile"
+                    className="h-28 w-28 rounded-full border border-white/10 object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex h-28 w-28 items-center justify-center rounded-full text-3xl font-semibold text-white"
+                    style={{ background: 'linear-gradient(135deg,#7c5ce9,#4a9cf6)' }}
+                  >
+                    {firstName?.[0]?.toUpperCase() || user?.firstName?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="file-input file-input-bordered w-full bg-white/[0.04] text-white"
+              />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFile(null);
+                  setAvatar(null);
+                  setAvatarPublicId(null);
+                  setRemoveAvatar(true);
+                }}
+                className="mt-3 w-full rounded-lg border border-red-500/20 px-3 py-2 text-[12px] text-red-300 transition-colors hover:bg-red-500/10"
+              >
+                Remove photo
+              </button>
+            </div>
+
+            <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50"
+              />
+
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last name"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50"
+              />
+
+              <input
+                type="number"
+                min="6"
+                max="80"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                placeholder="Age"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50"
+              />
+
+              <input
+                type="email"
+                value={user?.emailId || ''}
+                disabled
+                className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-sm text-white/45 outline-none"
+              />
+
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Short bio"
+                rows={4}
+                className="md:col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-5 py-2.5 text-[13px] text-white/45 transition-colors hover:text-white/75"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || uploading}
+              className="rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#7c5ce9,#4a9cf6)' }}
+            >
+              {saving || uploading ? 'Saving...' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── User dropdown ─────────────────────────────────────────────────────
 
-function UserDropdown({ user, onLogout }) {
+function UserDropdown({ user, onLogout, onEditProfile }) {
   const [open, setOpen] = useState(false);
   const ref             = useRef(null);
   const navigate        = useNavigate();
@@ -113,11 +355,19 @@ function UserDropdown({ user, onLogout }) {
           hover:bg-white/[0.08] hover:border-white/[0.15]
           transition-all text-[13px] text-white/70"
       >
-        <div className="w-6 h-6 rounded-full flex items-center justify-center
-          text-[11px] font-semibold text-white"
-          style={{ background: "linear-gradient(135deg,#7c5ce9,#4a9cf6)" }}>
-          {user?.firstName?.[0]?.toUpperCase()}
-        </div>
+        {user?.avatar ? (
+          <img
+            src={user.avatar}
+            alt={user?.firstName || 'User'}
+            className="h-6 w-6 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-full flex items-center justify-center
+            text-[11px] font-semibold text-white"
+            style={{ background: "linear-gradient(135deg,#7c5ce9,#4a9cf6)" }}>
+            {user?.firstName?.[0]?.toUpperCase()}
+          </div>
+        )}
         {user?.firstName}
         <svg className={`w-3 h-3 text-white/40 transition-transform ${open ? "rotate-180" : ""}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -140,6 +390,18 @@ function UserDropdown({ user, onLogout }) {
           </div>
 
           <div className="py-1">
+            <button
+              onClick={() => { onEditProfile(); setOpen(false); }}
+              className="w-full text-left px-4 py-2.5 text-[12px] text-white/75
+                hover:bg-white/5 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5h2m-1-1v2m6 8a8 8 0 11-16 0 8 8 0 0116 0z" />
+              </svg>
+              Edit profile
+            </button>
+
             {/* Admin — only visible to admins */}
             {user?.role === 'admin' && (
               <button
@@ -185,6 +447,7 @@ export default function Homepage() {
   const [loading, setLoading] = useState(true);
   const [problems, setProblems] = useState([]);
   const [solvedProblems, setSolvedProblems] = useState([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [filters, setFilters] = useState({
     difficulty: 'all',
     tag: 'all',
@@ -224,6 +487,10 @@ export default function Homepage() {
   const handleLogout = () => {
     dispatch(logoutUser());
     setSolvedProblems([]);
+  };
+
+  const handleProfileSaved = async () => {
+    await dispatch(checkAuth());
   };
 
   const isSolved = (problemId) => {
@@ -288,7 +555,13 @@ export default function Homepage() {
             </div>
 
             {/* ✅ User dropdown — always renders when user exists */}
-            {user && <UserDropdown user={user} onLogout={handleLogout} />}
+            {user && (
+              <UserDropdown
+                user={user}
+                onLogout={handleLogout}
+                onEditProfile={() => setShowProfileModal(true)}
+              />
+            )}
           </nav>
 
           {/* ── Content ── */}
@@ -309,7 +582,7 @@ export default function Homepage() {
               {[
                 { key: "status",     options: [["all","All Problems"],    ["solved","Solved"]]                                                             },
                 { key: "difficulty", options: [["all","All Difficulties"],["easy","Easy"],["medium","Medium"],["hard","Hard"]]                              },
-                { key: "tag",        options: [["all","All Tags"],        ["array","Array"],["linkedList","Linked List"],["graph","Graph"],["dp","DP"]]      },
+                { key: "tag",        options: [["all","All Tags"],        ["array","Array"],["linked-list","linkedList"],["graph","Graph"],["dp","DP"]]      },
               ].map(({ key, options }) => (
                 <select key={key} value={filters[key]}
                   onChange={(e) => setFilters(f => ({ ...f, [key]: e.target.value }))}
@@ -393,6 +666,14 @@ export default function Homepage() {
             )}
           </div>
         </div>
+
+        {showProfileModal && user && (
+          <ProfileModal
+            user={user}
+            onClose={() => setShowProfileModal(false)}
+            onSaved={handleProfileSaved}
+          />
+        )}
       </div>
     </>
   );

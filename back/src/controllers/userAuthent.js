@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const crypto = require("crypto");
 const transporter = require('../config/nodemailer');
+const { logLoginAttempt } = require("../config/loginAuditLogger");
 
 const register = async (req, res) => {
   try {
@@ -133,6 +134,7 @@ This link will expire in 15 minutes.
 //     }
 // }
 
+
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 const sendVerificationLink = async (req, res) => {
@@ -236,7 +238,7 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// ── Step 1: Send reset OTP ────────────────────────────────────────────
+// ── Step 1: Send reset OTP ─
 const sendResetOtp = async (req, res) => {
   try {
     const { emailId } = req.body;
@@ -400,19 +402,46 @@ const login = async (req,res)=>{
 
     try{
         const {emailId, password} = req.body;
+        const normalizedEmail = String(emailId || "").trim().toLowerCase();
         
-        if(!emailId)
-            throw new Error("Invalid Credentials");
-        if(!password)
-            throw new Error("Invalid Credentials");
+        if(!normalizedEmail || !password) {
+            logLoginAttempt({
+                req,
+                emailId: normalizedEmail,
+                status: "failed",
+                reason: "missing_credentials"
+            });
 
-        const user = await User.findOne({emailId}).select('+password');
+            return res.status(401).json({
+                message: "Invalid Credentials"
+            });
+        }
 
-        if(!user)
-            throw new Error("Invalid Credentials");
+        const user = await User.findOne({emailId: normalizedEmail}).select('+password');
+
+        if(!user) {
+            logLoginAttempt({
+                req,
+                emailId: normalizedEmail,
+                status: "failed",
+                reason: "invalid_credentials"
+            });
+
+            return res.status(401).json({
+                message: "Invalid Credentials"
+            });
+        }
 
         // Check if account is verified
         if (!user.isAccountVerified) {
+            logLoginAttempt({
+                req,
+                emailId: normalizedEmail,
+                user,
+                status: "blocked",
+                reason: "email_not_verified"
+            });
+
             return res.status(401).json({
                 message: "Please verify your email before logging in. Check your inbox for the verification link."
             });
@@ -420,24 +449,54 @@ const login = async (req,res)=>{
 
         const match = await bcrypt.compare(password,user.password);
 
-        if(!match)
-            throw new Error("Invalid Credentials");
+        if(!match) {
+            logLoginAttempt({
+                req,
+                emailId: normalizedEmail,
+                user,
+                status: "failed",
+                reason: "invalid_credentials"
+            });
+
+            return res.status(401).json({
+                message: "Invalid Credentials"
+            });
+        }
 
         const reply = {
             firstName: user.firstName,
+            lastName: user.lastName || "",
             emailId: user.emailId,
             _id: user._id,
             role: user.role,
+            avatar: user.avatar || null,
+            avatarPublicId: user.avatarPublicId || null,
+            bio: user.bio || "",
+            age: user.age ?? null,
         }
 
-        const token = jwt.sign({_id:user._id , emailId:emailId, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
+        const token = jwt.sign({_id:user._id , emailId:normalizedEmail, role:user.role},process.env.JWT_KEY,{expiresIn: 60*60});
         res.cookie('token',token,{maxAge: 60*60*1000});
+        logLoginAttempt({
+            req,
+            emailId: normalizedEmail,
+            user,
+            status: "success",
+            reason: "login_successful"
+        });
         res.status(200).json({
             user:reply,
             message:"Login Successfully"
         })
     }
     catch(err){
+        logLoginAttempt({
+            req,
+            emailId: req.body?.emailId,
+            status: "error",
+            reason: err.message || "unexpected_login_error"
+        });
+
         res.status(401).json({
             message: err.message || "Invalid Credentials"
         });

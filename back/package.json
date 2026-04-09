@@ -34,6 +34,8 @@
     "passport-google-oauth20": "^2.0.0",
     "promise": "^8.3.0",
     "redis": "^5.10.0",
-    "validator": "^13.15.26"
+    "validator": "^13.15.26",
+    "winston": "^3.19.0",
+    "winston-mongodb": "^7.0.1"
   }
 }

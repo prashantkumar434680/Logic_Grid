@@ -6,6 +6,7 @@ const passport   = require("../config/passport");
 const User       = require('../Models/User');
 const userMiddleware  = require("../middleware/userMiddleware");
 const adminMiddleware = require('../middleware/adminMiddleware');
+const { logLoginAttempt } = require("../config/loginAuditLogger");
 const {
   verifyResetOTP, sendVerificationLink, verifyEmail,
   resendVerification, register, sendResetOtp,
@@ -41,7 +42,18 @@ const resetPasswordLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max:      5,
-  message:  "Too many login attempts",
+  handler: (req, res) => {
+    logLoginAttempt({
+      req,
+      emailId: req.body?.emailId,
+      status: "blocked",
+      reason: "rate_limit_exceeded",
+    });
+
+    res.status(429).json({
+      message: "Too many login attempts",
+    });
+  },
 });
 
 // ── Shared helper — create JWT + set cookie ───────────────────────────
@@ -79,6 +91,7 @@ authRouter.delete('/deleteProfile',        userMiddleware,      deleteProfile);
 authRouter.post('/send-reset-otp',                              sendResetOtp);
 authRouter.post('/verify-reset-otp',                            verifyResetOTP);
 authRouter.post('/reset-password',         resetPasswordLimiter, resetPassword);
+// authRouter.post('/profileUpdate',          userMiddleware,       profileUpdate);
 
 // ── Check auth ────────────────────────────────────────────────────────
 
@@ -86,9 +99,14 @@ authRouter.get('/check', userMiddleware, (req, res) => {
   res.status(200).json({
     user: {
       firstName: req.result.firstName,
+      lastName: req.result.lastName || "",
       emailId:   req.result.emailId,
       _id:       req.result._id,
       role:      req.result.role, // ✅ added — needed for admin panel
+      avatar: req.result.avatar || null,
+      avatarPublicId: req.result.avatarPublicId || null,
+      bio: req.result.bio || "",
+      age: req.result.age ?? null,
     },
     message: "Valid User"
   });
@@ -156,7 +174,7 @@ authRouter.get("/github/callback", (req, res, next) => {
 
 // ── Dev-only test routes ──────────────────────────────────────────────
 
-// ✅ Only available in development — removed from production
+// Only available in development — removed from production
 if (process.env.NODE_ENV !== 'production') {
   authRouter.get('/oauth-test', (req, res) => {
     res.json({

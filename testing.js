@@ -1,284 +1,326 @@
-app.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  try {
-    const oldUser = await User.findOne({ email });
-    if (!oldUser) {
-      return res.json({ status: "User Not Exists!!" });
+const problem1 = {
+  title: "Maximum Subarray Sum",
+
+  description:
+    "Given an array of integers, find the contiguous subarray with the largest sum and return that sum.\n\n" +
+    "Example:\nInput: -2 1 -3 4 -1 2 1 -5 4\nOutput: 6\nExplanation: Subarray [4, -1, 2, 1] has the largest sum = 6",
+
+  difficulty: "medium",
+
+  tags: "array",
+
+  visibleTestCases: [
+    {
+      input: "-2 1 -3 4 -1 2 1 -5 4",
+      output: "6"
+    },
+    {
+      input: "1 2 3 4",
+      output: "10"
     }
-    const secret = JWT_SECRET + oldUser.password;
-    const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
-      expiresIn: "5m",
-    });
-    const link = `http://localhost:5000/reset-password/${oldUser._id}/${token}`;
-    var transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: "adarsh438tcsckandivali@gmail.com",
-        pass: "rmdklolcsmswvyfw",
-      },
-    });
+  ],
 
-    var mailOptions = {
-      from: "youremail@gmail.com",
-      to: "thedebugarena@gmail.com",
-      subject: "Password Reset",
-      text: link,
-    };
+  hiddenTestCases: [
+    {
+      input: "-1 -2 -3",
+      output: "-1"
+    }
+  ],
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log("Email sent: " + info.response);
-      }
-    });
-    console.log(link);
-  } catch (error) {}
-});
+  startCode: [
+    {
+      language: "C++",
+      initialCode:
+`#include <iostream>
+using namespace std;
 
-app.get("/reset-password/:id/:token", async (req, res) => {
-  const { id, token } = req.params;
-  console.log(req.params);
-  const oldUser = await User.findOne({ _id: id });
-  if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
-  }
-  const secret = JWT_SECRET + oldUser.password;
-  try {
-    const verify = jwt.verify(token, secret);
-    res.render("index", { email: verify.email, status: "Not Verified" });
-  } catch (error) {
-    console.log(error);
-    res.send("Not Verified");
-  }
-});
+int maxSubArray(int arr[], int n) {
+    // Write your code here
+}
 
-app.post("/reset-password/:id/:token", async (req, res) => {
-  const { id, token } = req.params;
-  const { password } = req.body;
+int main() {
+    // Input handling
+}`
+    },
+    {
+      language: "Java",
+      initialCode:
+`public class Main {
+    public static int maxSubArray(int[] arr) {
+        // Write your code here
+        return 0;
+    }
+}`
+    },
+    {
+      language: "Javascript",
+      initialCode:
+`function maxSubArray(arr) {
+    // Write your code here
+}`
+    }
+  ],
 
-  const oldUser = await User.findOne({ _id: id });
-  if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
-  }
-  const secret = JWT_SECRET + oldUser.password;
-  try {
-    const verify = jwt.verify(token, secret);
-    const encryptedPassword = await bcrypt.hash(password, 10);
-    await User.updateOne(
-      {
-        _id: id,
-      },
-      {
-        $set: {
-          password: encryptedPassword,
-        },
-      }
-    );
+  referenceSolution: [
+    {
+      language: "C++",
+      completeCode:
+`#include <iostream>
+using namespace std;
 
-    res.render("index", { email: verify.email, status: "verified" });
-  } catch (error) {
-    console.log(error);
-    res.json({ status: "Something Went Wrong" });
-  }
-});
+int maxSubArray(int arr[], int n) {
+    int maxSum = arr[0];
+    int currSum = arr[0];
 
+    for(int i = 1; i < n; i++) {
+        currSum = max(arr[i], currSum + arr[i]);
+        maxSum = max(maxSum, currSum);
+    }
+    return maxSum;
+}`
+    },
+    {
+      language: "Java",
+      completeCode:
+`public class Main {
+    public static int maxSubArray(int[] arr) {
+        int maxSum = arr[0];
+        int currSum = arr[0];
 
+        for(int i = 1; i < arr.length; i++) {
+            currSum = Math.max(arr[i], currSum + arr[i]);
+            maxSum = Math.max(maxSum, currSum);
+        }
+        return maxSum;
+    }
+}`
+    },
+    {
+      language: "Javascript",
+      completeCode:
+`function maxSubArray(arr) {
+    let maxSum = arr[0];
+    let currSum = arr[0];
 
+    for (let i = 1; i < arr.length; i++) {
+        currSum = Math.max(arr[i], currSum + arr[i]);
+        maxSum = Math.max(maxSum, currSum);
+    }
 
-
-
-
-
-
-const nodemailer = require("nodemailer");
-require("dotenv").config();
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-const sendVerificationEmail = async (email, token) => {
-  const verificationUrl = `${process.env.BASE_URL}/api/auth/verify-email?token=${token}`;
-
-  await transporter.sendMail({
-    from: `"SkillTree" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject: "Verify Your Email - SkillTree",
-    html: `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Verify Your Email</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f0f4f0;font-family:'Segoe UI',Arial,sans-serif; border-radius:16px;">
-  <table width="100%"  cellpadding="0" cellspacing="0" style="background-color:#f0f4f0; padding:0; border-radius:16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff; border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-
-          <!-- Header -->
-          <tr>
-            <td align="center" style="background:linear-gradient(135deg,#1a5c2a 0%,#2e8b4a 60%,#4caf72 100%);padding:48px 40px 36px;">
-              <div style="font-size:48px;margin-bottom:12px;">🌳</div>
-              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,0.2);">SkillTree</h1>
-              <p style="margin:8px 0 0;color:#c8f0d4;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Grow Your Skills</p>
-            </td>
-          </tr>
-
-          <!-- Body -->
-          <tr>
-            <td style="padding:48px 48px 32px;">
-              <h2 style="margin:0 0 16px;color:#1a3a24;font-size:24px;font-weight:700;">Welcome aboard!</h2>
-              <p style="margin:0 0 24px;color:#4a5e52;font-size:16px;line-height:1.7;">
-                You're one step away from unlocking your full potential. Please verify your email address to activate your <strong style="color:#2e8b4a;">SkillTree</strong> account and start your learning journey.
-              </p>
-
-              <!-- CTA Button -->
-              <table cellpadding="0" cellspacing="0" style="margin:32px 0;">
-                <tr>
-                  <td align="center" style="background:linear-gradient(135deg,#2e8b4a,#4caf72);border-radius:50px;box-shadow:0 4px 15px rgba(46,139,74,0.4);">
-                    <a href="${verificationUrl}" style="display:inline-block;padding:16px 48px;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:0.5px;">
-                      &nbsp;Verify My Email
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Info Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6fdf7;border-left:4px solid #2e8b4a;border-radius:0 8px 8px 0;margin:24px 0;">
-                <tr>
-                  <td style="padding:16px 20px;">
-                    <p style="margin:0;color:#2e6b3e;font-size:14px;line-height:1.6;">
-                      <strong>This link expires in 10 minutes.</strong><br/>
-                      If you didn't create a SkillTree account, you can safely ignore this email.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color:#f6fdf7;padding:24px 48px;border-top:1px solid #e0ede4;">
-              <p style="margin:0;color:#8a9e90;font-size:13px;text-align:center;line-height:1.6;">
-                © ${new Date().getFullYear()} SkillTree &nbsp;|&nbsp; Growing minds, one skill at a time <br/>
-                <span style="font-size:12px;">You received this email because an account was created with this address.</span>
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `,
-  });
+    return maxSum;
+}`
+    }
+  ]
 };
 
-const sendPasswordResetEmail = async (email, token) => {
-  const resetUrl = `${process.env.BASE_URL}/reset-password?token=${token}`;
+module.exports.problem1 = problem1;
 
-  await transporter.sendMail({
-    from: `"SkillTree" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject: "Reset Your Password - SkillTree",
-    html: `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reset Your Password</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f0f4f0;font-family:'Segoe UI',Arial,sans-serif; border-radius:16px;">
-  <table width="100%"  cellpadding="0" cellspacing="0" style="background-color:#f0f4f0;padding:0; border-radius:16px;">
-    <tr>
-      <td align="center">
-        <table width="600"  cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+const problem = {
+  title: "Reverse a Linked List",
 
-          <!-- Header -->
-          <tr>
-            <td align="center" style="background:linear-gradient(135deg,#1a3a5c 0%,#2e5b8b 60%,#4c86af 100%);padding:48px 40px 36px;">
-              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px rgba(0,0,0,0.2);">SkillTree</h1>
-              <p style="margin:8px 0 0;color:#c8dcf0;font-size:14px;letter-spacing:2px;text-transform:uppercase;">Password Reset</p>
-            </td>
-          </tr>
+  description:
+    "Given the head of a singly linked list, reverse the list and return the new head.\n\n" +
+    "A linked list is a linear data structure where each node contains a value and a pointer to the next node.\n\n" +
+    "Example:\nInput: 1 -> 2 -> 3 -> 4 -> NULL\nOutput: 4 -> 3 -> 2 -> 1 -> NULL",
 
-          <!-- Body -->
-          <tr>
-            <td style="padding:48px 48px 32px;">
-              <h2 style="margin:0 0 16px;color:#1a2a3a;font-size:24px;font-weight:700;">Reset your password</h2>
-              <p style="margin:0 0 24px;color:#4a5260;font-size:16px;line-height:1.7;">
-                We received a request to reset the password for your <strong style="color:#2e5b8b;">SkillTree</strong> account. Click the button below to choose a new password.
-              </p>
+  difficulty: "easy",
 
-              <!-- CTA Button -->
-              <table cellpadding="0" cellspacing="0" style="margin:32px 0;">
-                <tr>
-                  <td align="center" style="background:linear-gradient(135deg,#2e5b8b,#4c86af);border-radius:50px;box-shadow:0 4px 15px rgba(46,91,139,0.4);">
-                    <a href="${resetUrl}" style="display:inline-block;padding:16px 48px;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;letter-spacing:0.5px;">
-                    Reset My Password
-                    </a>
-                  </td>
-                </tr>
-              </table>
+  tags: "linked-list",
 
-              <!-- Warning Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fff8f0;border-left:4px solid #e8843a;border-radius:0 8px 8px 0;margin:24px 0;">
-                <tr>
-                  <td style="padding:16px 20px;">
-                    <p style="margin:0;color:#7a4a1e;font-size:14px;line-height:1.6;">
-                      <strong>This link expires in 10 minutes.</strong><br/>
-                      If you didn't request a password reset, please ignore this email — your password will remain unchanged.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+  visibleTestCases: [
+    {
+      input: "1 2 3 4",
+      output: "4 3 2 1"
+    },
+    {
+      input: "5 6 7",
+      output: "7 6 5"
+    }
+  ],
 
-              <!-- Security Notice -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9ff;border-radius:8px;margin:16px 0;">
-                <tr>
-                  <td style="padding:16px 20px;">
-                    <p style="margin:0;color:#5a6070;font-size:13px;line-height:1.6;">
-                    <strong>Security tip:</strong> SkillTree will never ask for your password via email. If something seems off, contact our support team.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+  hiddenTestCases: [
+    {
+      input: "10",
+      output: "10"
+    }
+  ],
 
-            </td>
-          </tr>
+  startCode: [
+    {
+      language: "C++",
+      initialCode:
+`#include <iostream>
+using namespace std;
 
-          <!-- Footer -->
-          <tr>
-            <td style="background-color:#f6f8fd;padding:24px 48px;border-top:1px solid #e0e4ed;">
-              <p style="margin:0;color:#8a90a0;font-size:13px;text-align:center;line-height:1.6;">
-                © ${new Date().getFullYear()} SkillTree &nbsp;|&nbsp; Growing minds, one skill at a time<br/>
-                <span style="font-size:12px;">You received this email because a password reset was requested for this address.</span>
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `,
-  });
+struct Node {
+    int val;
+    Node* next;
 };
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+Node* reverseList(Node* head) {
+    // Write your code here
+}
+
+int main() {
+    // Input handling
+}`
+    },
+    {
+      language: "Java",
+      initialCode:
+`class ListNode {
+    int val;
+    ListNode next;
+    ListNode(int val) { this.val = val; }
+}
+
+public class Main {
+    public static ListNode reverseList(ListNode head) {
+        // Write your code here
+        return null;
+    }
+}`
+    },
+    {
+      language: "Javascript",
+      initialCode:
+`// Definition for singly-linked list
+function ListNode(val) {
+    this.val = val;
+    this.next = null;
+}
+
+function reverseList(head) {
+    // Write your code here
+}`
+    }
+  ],
+
+  referenceSolution: [
+    {
+      language: "C++",
+      completeCode:
+`#include <iostream>
+using namespace std;
+
+struct Node {
+    int val;
+    Node* next;
+};
+
+Node* reverseList(Node* head) {
+    Node* prev = NULL;
+    Node* curr = head;
+    while(curr != NULL) {
+        Node* next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+    return prev;
+}
+
+int main() {
+    int x;
+    Node* head = NULL;
+    Node* tail = NULL;
+
+    while(cin >> x) {
+        Node* newNode = new Node{x, NULL};
+
+        if(head == NULL) {
+            head = tail = newNode;
+        } else {
+            tail->next = newNode;
+            tail = newNode;
+        }
+    }
+
+    head = reverseList(head);
+
+    while(head != NULL) {
+        cout << head->val << " ";
+        head = head->next;
+    }
+}`
+    },
+    {
+      language: "Java",
+      completeCode:
+`class ListNode {
+    int val;
+    ListNode next;
+    ListNode(int val) { this.val = val; }
+}
+
+public class Main {
+    public static ListNode reverseList(ListNode head) {
+        ListNode prev = null;
+        ListNode curr = head;
+        while(curr != null) {
+            ListNode next = curr.next;
+            curr.next = prev;
+            prev = curr;
+            curr = next;
+        }
+        return prev;
+    }
+}`
+    },
+    {
+      language: "Javascript",
+      completeCode:
+`// Definition for singly-linked list
+function ListNode(val) {
+    this.val = val;
+    this.next = null;
+}
+
+function reverseList(head) {
+    let prev = null;
+    let curr = head;
+
+    while (curr !== null) {
+        let next = curr.next;
+        curr.next = prev;
+        prev = curr;
+        curr = next;
+    }
+
+    return prev;
+}
+
+// Driver Code (for testing)
+function buildList(arr) {
+    let head = null, tail = null;
+    for (let val of arr) {
+        let node = new ListNode(val);
+        if (!head) {
+            head = tail = node;
+        } else {
+            tail.next = node;
+            tail = node;
+        }
+    }
+    return head;
+}
+
+function printList(head) {
+    let res = [];
+    while (head) {
+        res.push(head.val);
+        head = head.next;
+    }
+    console.log(res.join(" "));
+}
+
+// Example
+let input = [1,2,3,4];
+let head = buildList(input);
+head = reverseList(head);
+printList(head);`
+    }
+  ]
+};
+
+module.exports = problem;
