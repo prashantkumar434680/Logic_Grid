@@ -12,6 +12,7 @@ const userDataRouter = require('./Routes/userData');
 const passport = require('./config/passport');
 const SolveProblem = require('./Routes/SolveProb');
 const videoRouter = require('./Routes/videoCreator');
+const { startDailyProblemScheduler, stopDailyProblemScheduler } = require('./utils/dailyProblemScheduler');
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -33,6 +34,7 @@ app.use('/video',videoRouter);
 const InitalizeConnection = async()=>{
     try{
         await Promise.all([main(),redisClient.connect()]);
+        await startDailyProblemScheduler();
         console.log("DB Connected.");
 
         app.listen(process.env.PORT,()=>{
@@ -46,4 +48,14 @@ const InitalizeConnection = async()=>{
 
 
 InitalizeConnection();
+
+process.on('SIGINT', () => {
+    stopDailyProblemScheduler();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    stopDailyProblemScheduler();
+    process.exit(0);
+});
 

@@ -33,7 +33,7 @@ function ChatAi({problem}) {
                 content: response.data.message || response.data.content 
             }]);
         } catch (error) {
-            console.error("API Error:", error);
+            // console.error("API Error:", error);
             setMessages(prev => [...prev, { 
                 role: 'model', 
                 content: "Sorry, I encountered an error" 

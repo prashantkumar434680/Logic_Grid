@@ -2,23 +2,36 @@ const User = require('../Models/User');
 const solutionVideo = require('../Models/solutionVideo');
 const Problem = require('../Models/Problem');
 const cloudinary = require('cloudinary').v2;
-const {sanitizeFilter} = require('mongoose');
 const SolutionVideo = require('../Models/solutionVideo');
 
+const CLOUDINARY_CLOUD_NAME = String(
+    process.env.CLOUDINARY_CLOUD_NAME || process.env.cloudinary_cloud_name || ''
+).trim().toLowerCase();
+const CLOUDINARY_API_KEY = String(
+    process.env.CLOUDINARY_API_KEY || process.env.cloudinary_api_key || ''
+).trim();
+const CLOUDINARY_API_SECRET = String(
+    process.env.CLOUDINARY_API_SECRET || process.env.cloudinary_api_secret || ''
+).trim();
+
 cloudinary.config({
-    cloud_name: process.env.cloudinary_cloud_name,
-    api_key: process.env.cloudinary_api_key,
-    api_secret: process.env.cloudinary_api_secret
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET
 });
 
 const generateUploadSignature = async (req,res)=>{
 
     try{
+    if(!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET){
+        return res.status(500).json({error: 'Cloudinary configuration is missing on server'});
+    }
+
     const {problemId} = req.params;
     const userId = req.result._id;
 
     // Verify that prblem exists or not
-    const problem = Problem.findOne({_id: problemId});
+    const problem = await Problem.findOne({_id: problemId});
     if(!problem){
         return res.status(404).json({error: "Problem not found"});
     }
@@ -33,14 +46,14 @@ const generateUploadSignature = async (req,res)=>{
     }
 
     // generate Signature
-    const signature = cloudinary.utils.api_sign_request(uploadparams, process.env.cloudinary_api_secret);
+    const signature = cloudinary.utils.api_sign_request(uploadparams, CLOUDINARY_API_SECRET);
     res.json({
         signature,
         timestamp,
         public_id: publicId,
-        api_key: process.env.cloudinary_api_key,
-        cloud_name: process.env.cloudinary_cloud_name,
-        upload_url: `https://api.cloudinary.com/v1_1/${process.env.cloudinary_cloud_name}/video/upload`
+        api_key: CLOUDINARY_API_KEY,
+        cloud_name: CLOUDINARY_CLOUD_NAME,
+        upload_url: `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`
     })
     }
     catch(err){
@@ -55,8 +68,8 @@ const saveVideoMetadata = async (req,res)=>{
         const userId = req.result._id;
 
         // verify the upload with cloudinary
-        const cloudinaryResource = await cloudinary.api.resource(cloudinaryPublicId, {resources_type: 'video'});
-        if(!cloudinaryResource || cloudinaryResource.secureUrl !== secureUrl){
+        const cloudinaryResource = await cloudinary.api.resource(cloudinaryPublicId, {resource_type: 'video'});
+        if(!cloudinaryResource || cloudinaryResource.secure_url !== secureUrl){
             return res.status(400).json({error: "video verification failed"})
         }
 
@@ -70,7 +83,7 @@ const saveVideoMetadata = async (req,res)=>{
         const thumbnailUrl = cloudinary.image(cloudinaryResource.public_id, {resource_type: 'video'});
 
         // now create videoSolution document in DB
-        const videoSolution = SolutionVideo.create({
+        const videoSolution = await SolutionVideo.create({
             problemId,
             userId,
             cloudinaryPublicId,
@@ -79,7 +92,7 @@ const saveVideoMetadata = async (req,res)=>{
             thumbnailUrl
         })
 
-        res.ststus(201).json(
+        res.status(201).json(
             {
                 message: "Video metaData Saved sucessfully",
                  videoSolution: {

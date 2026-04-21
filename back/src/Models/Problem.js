@@ -80,8 +80,25 @@ const problemSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref:'user',
         required:true
+    },
+    isDailyProblem: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    activeDate: {
+        type: Date,
+        default: null
     }
 })
+
+problemSchema.index(
+    { isDailyProblem: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { isDailyProblem: true }
+    }
+);
 
 
 const Problem = mongoose.model('problem',problemSchema);

@@ -70,7 +70,7 @@ function AdminUpload(){
           reset(); // Reset form after successful upload
           
         } catch (err) {
-          console.error('Upload error:', err);
+          // console.error('Upload error:', err);
           setError('root', {
             type: 'manual',
             message: err.response?.data?.message || 'Upload failed. Please try again.'

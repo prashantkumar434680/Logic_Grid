@@ -1,10 +1,22 @@
 const User = require("../Models/User");
 const cloudinary = require("cloudinary").v2;
 
+const CLOUDINARY_CLOUD_NAME = String(
+  process.env.CLOUDINARY_CLOUD_NAME || process.env.cloudinary_cloud_name || ""
+)
+  .trim()
+  .toLowerCase();
+const CLOUDINARY_API_KEY = String(
+  process.env.CLOUDINARY_API_KEY || process.env.cloudinary_api_key || ""
+).trim();
+const CLOUDINARY_API_SECRET = String(
+  process.env.CLOUDINARY_API_SECRET || process.env.cloudinary_api_secret || ""
+).trim();
+
 cloudinary.config({
-  cloud_name: process.env.cloudinary_cloud_name,
-  api_key: process.env.cloudinary_api_key,
-  api_secret: process.env.cloudinary_api_secret,
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET,
 });
 
 const sanitizeString = (value = "") => {
@@ -30,6 +42,12 @@ const buildProfileResponse = (user) => ({
 
 const generateProfileImageUploadSignature = async (req, res) => {
   try {
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        message: "Cloudinary configuration is missing on server",
+      });
+    }
+
     const userId = req.result._id;
     const timestamp = Math.round(Date.now() / 1000);
     const publicId = `${userId}_${timestamp}`;
@@ -42,7 +60,7 @@ const generateProfileImageUploadSignature = async (req, res) => {
 
     const signature = cloudinary.utils.api_sign_request(
       uploadParams,
-      process.env.cloudinary_api_secret
+      CLOUDINARY_API_SECRET
     );
 
     res.status(200).json({
@@ -50,9 +68,9 @@ const generateProfileImageUploadSignature = async (req, res) => {
       timestamp,
       public_id: publicId,
       folder: "logicgrid-profiles",
-      api_key: process.env.cloudinary_api_key,
-      cloud_name: process.env.cloudinary_cloud_name,
-      upload_url: `https://api.cloudinary.com/v1_1/${process.env.cloudinary_cloud_name}/image/upload`,
+      api_key: CLOUDINARY_API_KEY,
+      cloud_name: CLOUDINARY_CLOUD_NAME,
+      upload_url: `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     });
   } catch (err) {
     res.status(500).json({

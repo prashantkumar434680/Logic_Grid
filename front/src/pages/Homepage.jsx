@@ -193,7 +193,12 @@ function ProfileModal({ user, onClose, onSaved }) {
       await onSaved();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to update profile');
+      setError(
+        err.response?.data?.message ||
+        err.response?.data?.error?.message ||
+        err.message ||
+        'Failed to update profile'
+      );
     } finally {
       setSaving(false);
     }
@@ -453,6 +458,12 @@ export default function Homepage() {
     tag: 'all',
     status: 'all'
   });
+  const [searchName, setSearchName] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
 
   useEffect(() => {
     // ✅ fetch problems and solved together
@@ -484,6 +495,30 @@ export default function Homepage() {
     fetchAll();
   }, [user]);
 
+  useEffect(() => {
+    try {
+      const savedSearches = JSON.parse(localStorage.getItem('logicgrid-recent-searches') || '[]');
+      if (Array.isArray(savedSearches)) {
+        setRecentSearches(savedSearches.slice(0, 5));
+      }
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const trimmedName = searchName.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      runSearch(trimmedName, true);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [searchName]);
+
   const handleLogout = () => {
     dispatch(logoutUser());
     setSolvedProblems([]);
@@ -491,6 +526,79 @@ export default function Homepage() {
 
   const handleProfileSaved = async () => {
     await dispatch(checkAuth());
+  };
+
+  const persistRecentSearches = (nextSearches) => {
+    setRecentSearches(nextSearches);
+    localStorage.setItem('logicgrid-recent-searches', JSON.stringify(nextSearches));
+  };
+
+  const addRecentSearch = (nameValue) => {
+    const nextEntry = { name: nameValue };
+    const deduped = recentSearches.filter((entry) => entry.name !== nextEntry.name);
+    const nextSearches = [nextEntry, ...deduped].slice(0, 5);
+    persistRecentSearches(nextSearches);
+  };
+
+  const runSearch = async (nameValue = searchName.trim(), isDebounced = false) => {
+    if (!nameValue) {
+      setHasSearched(false);
+      setSearchResults([]);
+      setSearchError('');
+      return;
+    }
+
+    setSearchLoading(true);
+    setSearchError('');
+
+    try {
+      const { data } = await axiosClient.get('/problem/search', {
+        params: {
+          name: nameValue || undefined,
+        },
+      });
+
+      const resultArray = Array.isArray(data) ? data : [];
+      setSearchResults(resultArray);
+      setHasSearched(true);
+
+      if (!isDebounced) {
+        addRecentSearch(nameValue);
+      }
+    } catch (error) {
+      setHasSearched(true);
+      setSearchResults([]);
+      setSearchError(error?.response?.data?.message || 'Failed to search problems');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchName('');
+    setSearchResults([]);
+    setSearchError('');
+    setHasSearched(false);
+  };
+
+  const highlightText = (text = '', keyword = '') => {
+    const trimmedKeyword = keyword.trim();
+    if (!trimmedKeyword) {
+      return text;
+    }
+
+    const regex = new RegExp(`(${trimmedKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
+    return text.split(regex).map((part, index) => {
+      if (part.toLowerCase() === trimmedKeyword.toLowerCase()) {
+        return (
+          <mark key={`${part}-${index}`} className="rounded bg-amber-400/25 px-1 text-amber-100">
+            {part}
+          </mark>
+        );
+      }
+
+      return <span key={`${part}-${index}`}>{part}</span>;
+    });
   };
 
   const isSolved = (problemId) => {
@@ -518,7 +626,9 @@ export default function Homepage() {
     return difficultyMatch && tagMatch && statusMatch;
   });
 
-
+  const displayedProblems = hasSearched ? searchResults : filtered;
+  const activeQuery = searchName.trim();
+  const hasActiveSearchInput = Boolean(activeQuery);
 
   const solvedCount = solvedProblems.length;
 
@@ -552,6 +662,12 @@ export default function Homepage() {
               <NavLink to="/" className="font-['Instrument_Serif'] text-[17px] text-white tracking-tight">
                 LogicGrid
               </NavLink>
+              <NavLink
+                to="/daily-challenge"
+                className="ml-4 text-[12px] px-2.5 py-1 rounded-md border border-amber-400/30 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20 transition-colors"
+              >
+                Daily Challenge
+              </NavLink>
             </div>
 
             {/* ✅ User dropdown — always renders when user exists */}
@@ -566,6 +682,56 @@ export default function Homepage() {
 
           {/* ── Content ── */}
           <div className="max-w-4xl mx-auto px-6 py-8">
+
+            <div className="mb-7 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 shadow-lg backdrop-blur-sm transition-all duration-300">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-white/35">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+                    </svg>
+                  </span>
+                  <input
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    placeholder="Search by problem name"
+                    className="w-full rounded-xl border border-white/[0.12] bg-[#141421] py-2.5 pl-10 pr-4 text-sm text-white outline-none transition-all duration-200 focus:border-purple-400/70 focus:shadow-[0_0_0_3px_rgba(124,92,233,0.25)]"
+                  />
+                </div>
+
+                <button
+                  onClick={() => runSearch()}
+                  disabled={searchLoading}
+                  className="btn ml-4 text-[12px] px-2.5 py-1 rounded-md border border-amber-400/30 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20 transition-colors disabled:opacity-60"
+                >
+                  {searchLoading ? 'Searching...' : 'Search'}
+                </button>
+
+                <button
+                  onClick={clearSearch}
+                  className="btn btn-ghost rounded-xl border border-white/[0.15] px-4 text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+                >
+                  Clear
+                </button>
+              </div>
+
+              {recentSearches.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {recentSearches.map((entry, index) => (
+                    <button
+                      key={`${entry.name}-${index}`}
+                      onClick={() => {
+                        setSearchName(entry.name || '');
+                        runSearch(entry.name || '');
+                      }}
+                      className="rounded-full border border-white/[0.14] bg-white/[0.04] px-3 py-1 text-[11px] text-white/65 transition-colors hover:bg-white/[0.1] hover:text-white"
+                    >
+                      {(entry.name || '').trim()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Stats — only when user is logged in */}
             {user && (
@@ -598,11 +764,13 @@ export default function Homepage() {
 
             {/* Count label */}
             <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-4">
-              {loading ? "Loading..." : `${filtered.length} problem${filtered.length !== 1 ? "s" : ""}`}
+              {searchLoading
+                ? 'Searching...'
+                : `${displayedProblems.length} problem${displayedProblems.length !== 1 ? 's' : ''}${hasSearched ? ' found' : ''}`}
             </p>
 
             {/* ✅ Loading skeleton */}
-            {loading ? (
+            {loading || searchLoading ? (
               <div className="flex flex-col gap-2">
                 {[1,2,3,4,5].map(i => (
                   <div key={i} className="h-16 rounded-xl bg-white/[0.025] border border-white/[0.06]
@@ -610,9 +778,65 @@ export default function Homepage() {
                 ))}
               </div>
 
-            ) : filtered.length === 0 ? (
+            ) : searchError ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-4 text-[13px] text-red-300">
+                {searchError}
+              </div>
+
+            ) : hasSearched && displayedProblems.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-[13px] text-white/25">No results found. Try another problem name.</p>
+              </div>
+
+            ) : !hasSearched && filtered.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-[13px] text-white/25">No problems match the current filters.</p>
+              </div>
+
+            ) : hasSearched || hasActiveSearchInput ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {displayedProblems.map((problem) => (
+                  <div
+                    key={problem._id}
+                    className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-purple-400/40 hover:bg-purple-500/[0.07]"
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h3 className="text-[16px] font-semibold text-white">
+                        {highlightText(problem.title, activeQuery)}
+                      </h3>
+                      <DiffBadge difficulty={problem.difficulty} />
+                    </div>
+
+                    <div className="mb-3 flex gap-1.5">
+                      {problem.tags && <TagBadge tag={problem.tags} />}
+                      {problem.isDailyProblem && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-amber-400/35 bg-amber-400/10 text-amber-200">
+                          Daily
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mb-4 text-[12px] leading-relaxed text-white/55 min-h-[52px]">
+                      {problem.description ? highlightText(`${problem.description.slice(0, 120)}${problem.description.length > 120 ? '...' : ''}`, activeQuery) : 'No description preview available.'}
+                    </p>
+
+                    <div className="flex items-center justify-between">
+                      {isSolved(problem._id) ? (
+                        <span className="text-[11px] text-teal-300">Solved</span>
+                      ) : (
+                        <span className="text-[11px] text-white/35">Unsolved</span>
+                      )}
+
+                      <NavLink
+                        to={`/problem/${problem._id}`}
+                        className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                        style={{ background: 'linear-gradient(135deg,#7c5ce9,#4a9cf6)' }}
+                      >
+                        Solve
+                      </NavLink>
+                    </div>
+                  </div>
+                ))}
               </div>
 
             ) : (

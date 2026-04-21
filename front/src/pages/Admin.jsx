@@ -54,24 +54,24 @@ const adminOptions = [
       </svg>
     ),
   },
-  // {
-  //   id:          'video',
-  //   title:       'Video tutorials',
-  //   description: 'Upload new video solutions and editorial walkthroughs for problems on the platform.',
-  //   route:       '/admin/video',
-  //   accent:      'linear-gradient(90deg,#7c5ce9,#4a9cf6)',
-  //   iconBg:      'rgba(124,92,233,0.12)',
-  //   iconColor:   '#a78bfa',
-  //   btnBg:       'rgba(124,92,233,0.15)',
-  //   btnColor:    '#a78bfa',
-  //   btnLabel:    'Add video',
-  //   icon: (
-  //     <svg fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" className="w-5 h-5">
-  //       <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-  //       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  //     </svg>
-  //   ),
-  // },
+  {
+    id:          'video',
+    title:       'Video tutorials',
+    description: 'Upload new video solutions and editorial walkthroughs for problems on the platform.',
+    route:       '/admin/video',
+    accent:      'linear-gradient(90deg,#7c5ce9,#4a9cf6)',
+    iconBg:      'rgba(124,92,233,0.12)',
+    iconColor:   '#a78bfa',
+    btnBg:       'rgba(124,92,233,0.15)',
+    btnColor:    '#a78bfa',
+    btnLabel:    'Add video',
+    icon: (
+      <svg fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
 ];
 
 // ── Stat card ─────────────────────────────────────────────────────────

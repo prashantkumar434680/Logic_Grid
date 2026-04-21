@@ -2,6 +2,7 @@ const Problem = require("../Models/Problem");
 const Submission = require("../Models/submission");
 const User = require("../Models/User");
 const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtility");
+const { isSameUTCDate, getUTCStartOfDay } = require('../utils/dailyProblemScheduler');
 
 const submitCode = async (req,res)=>{
    
@@ -26,6 +27,13 @@ const submitCode = async (req,res)=>{
        const problem =  await Problem.findById(problemId);
        if(!problem)
         return res.status(404).json({ message: "Problem not found" });
+
+      if (problem.isDailyProblem) {
+        const todayStart = getUTCStartOfDay();
+        if (!problem.activeDate || !isSameUTCDate(problem.activeDate, todayStart)) {
+          return res.status(403).json({ message: 'Daily problem has expired. Submissions are closed.' });
+        }
+      }
     //    testcases(Hidden)
     
     //   Kya apne submission store kar du pehle....
@@ -144,6 +152,13 @@ const runCode = async(req,res)=>{
       const problem =  await Problem.findById(problemId);
       if(!problem)
        return res.status(404).json({ message: "Problem not found" });
+
+      if (problem.isDailyProblem) {
+        const todayStart = getUTCStartOfDay();
+        if (!problem.activeDate || !isSameUTCDate(problem.activeDate, todayStart)) {
+          return res.status(403).json({ message: 'Daily problem has expired. Run is disabled.' });
+        }
+      }
    //    testcases(Hidden)
       if(language==='cpp')
         language='c++'

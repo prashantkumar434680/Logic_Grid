@@ -2,6 +2,12 @@ const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtili
 const Problem = require("../Models/Problem");
 const User = require("../Models/User");
 const Submission = require("../Models/submission");
+const mongoose = require('mongoose');
+const {
+  getCurrentDailyProblem,
+  rotateDailyProblem,
+  getUTCStartOfDay,
+} = require('../utils/dailyProblemScheduler');
 
 const formatJudgeError = (test, language, index) => {
   const parts = [];
@@ -190,7 +196,7 @@ const getProblemById = async(req,res)=>{
     if(!id)
       return res.status(400).send("ID is Missing");
 
-    const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution ');
+    const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution isDailyProblem activeDate');
    
    if(!getProblem)
     return res.status(404).send("Problem is Missing");
@@ -207,13 +213,78 @@ const getAllProblem = async(req,res)=>{
 
   try{
      
-    const getProblem = await Problem.find({}).select('_id title difficulty tags');
+    const getProblem = await Problem.find({}).select('_id title description difficulty tags isDailyProblem activeDate');
     res.status(200).json(getProblem);
   }
   catch(err){
     res.status(500).json({ message: "Failed to fetch problems" });
   }
 }
+
+const searchProblems = async (req, res) => {
+  try {
+    const name = String(req.query.name || '').trim();
+    const id = String(req.query.id || '').trim();
+
+    if (!name && !id) {
+      return res.status(200).json([]);
+    }
+
+    if (id) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(200).json([]);
+      }
+
+      const exactProblem = await Problem.findById(id).select('_id title description difficulty tags isDailyProblem activeDate');
+      return res.status(200).json(exactProblem ? [exactProblem] : []);
+    }
+
+    const nameRegex = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const searchedProblems = await Problem.find({ title: nameRegex })
+      .select('_id title description difficulty tags isDailyProblem activeDate')
+      .limit(30);
+
+    return res.status(200).json(searchedProblems);
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to search problems' });
+  }
+};
+
+const getDailyProblem = async (req, res) => {
+  try {
+    const dailyProblem = await getCurrentDailyProblem();
+
+    if (!dailyProblem) {
+      return res.status(404).json({ message: 'No daily problem available' });
+    }
+
+    const expiresAt = new Date(getUTCStartOfDay(dailyProblem.activeDate).getTime() + 24 * 60 * 60 * 1000);
+
+    return res.status(200).json({
+      problem: dailyProblem,
+      expiresAt,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to fetch daily problem' });
+  }
+};
+
+const rotateDailyProblemNow = async (req, res) => {
+  try {
+    const dailyProblem = await rotateDailyProblem(new Date());
+
+    if (!dailyProblem) {
+      return res.status(404).json({ message: 'No problem available to rotate' });
+    }
+
+    return res.status(200).json({
+      message: 'Daily problem rotated successfully',
+      problem: dailyProblem,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to rotate daily problem' });
+  }
+};
 
 
 const solvedAllProblembyUser =  async(req,res)=>{
@@ -254,6 +325,17 @@ const submittedProblem = async(req,res)=>{
 
 
 
-module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,solvedAllProblembyUser,submittedProblem};
+module.exports = {
+  createProblem,
+  updateProblem,
+  deleteProblem,
+  getProblemById,
+  getAllProblem,
+  solvedAllProblembyUser,
+  submittedProblem,
+  getDailyProblem,
+  rotateDailyProblemNow,
+  searchProblems,
+};
 
 
