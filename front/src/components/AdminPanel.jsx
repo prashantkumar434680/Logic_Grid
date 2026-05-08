@@ -3,7 +3,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
 import { useNavigate } from 'react-router';
-import logo from '../assets/logo.png';
 
 // Zod schema matching the problem schema
 const problemSchema = z.object({

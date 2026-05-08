@@ -4,6 +4,50 @@ const User = require("../Models/User");
 const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtility");
 const { isSameUTCDate, getUTCStartOfDay } = require('../utils/dailyProblemScheduler');
 
+const getSubmissionCalendar = async (req, res) => {
+  try {
+    const userId = req.result._id;
+    const daysRaw = Number(req.query.days);
+    const days = Number.isFinite(daysRaw) && daysRaw > 0 ? Math.min(366, Math.floor(daysRaw)) : 364;
+
+    const now = new Date();
+    const endUTC = getUTCStartOfDay(now);
+    const fromUTC = new Date(endUTC.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+
+    const counts = await Submission.aggregate([
+      {
+        $match: {
+          userId,
+          createdAt: { $gte: fromUTC, $lte: now },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, date: "$_id", count: 1 } },
+      { $sort: { date: 1 } },
+    ]);
+
+    return res.status(200).json({
+      days,
+      from: fromUTC,
+      to: now,
+      counts,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to fetch submission calendar' });
+  }
+};
+
 const submitCode = async (req,res)=>{
    
     // 
@@ -223,7 +267,7 @@ const runCode = async(req,res)=>{
 }
 
 
-module.exports = {submitCode,runCode};
+module.exports = {submitCode,runCode,getSubmissionCalendar};
 
 
 

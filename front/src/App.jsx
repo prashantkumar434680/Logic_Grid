@@ -16,6 +16,7 @@ import AdminVideo from "./components/AdminVideo";
 import AdminUpdate from "./components/AdminUpdate";
 import UpdateProblem from "./components/UpdateProblem";
 import DailyChallenge from "./pages/DailyChallenge";
+import Profile from "./pages/Profile";
 
 // import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -60,6 +61,7 @@ function App(){
       <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === 'admin' ? <AdminUpload/> : <Navigate to='/' /> } ></Route>
       <Route path="/problem/:problemId" element={ <ProblemPage/> } ></Route>
       <Route path="/daily-challenge" element={isAuthenticated ? <DailyChallenge/> : <Navigate to="/login" />} ></Route>
+      <Route path="/profile" element={isAuthenticated ? <Profile/> : <Navigate to="/login" />} ></Route>
       {/* <Route 
         path="/admin" 
         element={

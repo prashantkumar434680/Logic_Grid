@@ -5,6 +5,7 @@ import { useParams } from 'react-router';
 import axiosClient from "../utils/axiosClient"
 import ChatAi from '../components/ChatAi';
 import SubmissionHistory from '../components/SubmissionHistory';
+import ProblemInteraction from '../components/ProblemInteraction';
 
 const ProblemPage = () => {
   const [problem,          setProblem]          = useState(null);
@@ -208,6 +209,9 @@ const ProblemPage = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Like and Comment Section */}
+                  <ProblemInteraction problemId={problemId} />
                 </div>
               )}
 
