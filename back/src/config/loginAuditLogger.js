@@ -46,7 +46,7 @@ if (process.env.STRING) {
       })
     );
   } catch (error) {
-    console.error("MongoDB login audit transport could not be initialized:", error.message);
+     res.status(500).json({ message: "Failed to initialize login audit logger" });
   }
 }
 
@@ -88,7 +88,7 @@ const logLoginAttempt = ({
       userAgent: req.get("user-agent") || "unknown",
     });
   } catch (error) {
-    console.error("Failed to write login audit log:", error.message);
+    res.status(500).json({ message: "Failed to log login attempt" });
   }
 };
 

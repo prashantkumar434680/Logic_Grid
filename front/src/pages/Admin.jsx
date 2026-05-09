@@ -155,6 +155,32 @@ export default function Admin() {
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-14">
 
+          {/* Back to Home Button */}
+          <div className="mb-6">
+            <NavLink 
+              to="/"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-all duration-200"
+              style={{
+                background: "rgba(124,92,233,0.12)",
+                border: "1px solid rgba(124,92,233,0.25)",
+                color: "#a78bfa"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(124,92,233,0.2)";
+                e.currentTarget.style.borderColor = "rgba(124,92,233,0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(124,92,233,0.12)";
+                e.currentTarget.style.borderColor = "rgba(124,92,233,0.25)";
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Home
+            </NavLink>
+          </div>
+
           {/* Header */}
           <div className="text-center mb-12">
 

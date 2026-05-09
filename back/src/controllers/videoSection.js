@@ -80,7 +80,13 @@ const saveVideoMetadata = async (req,res)=>{
         }
 
         // create new thumbnail for the video
-        const thumbnailUrl = cloudinary.image(cloudinaryResource.public_id, {resource_type: 'video'});
+        const thumbnailUrl = cloudinary.url(cloudinaryResource.public_id + '.jpg', {
+            resource_type: 'video',
+            transformation: [
+                { width: 640, height: 360, crop: 'fill' },
+                { quality: 'auto' }
+            ]
+        });
 
         // now create videoSolution document in DB
         const videoSolution = await SolutionVideo.create({
@@ -111,25 +117,62 @@ const saveVideoMetadata = async (req,res)=>{
 
 const VideoDelete = async (req,res)=>{
     try{
-        const {problemId} = req.params;
+        const {videoId} = req.params;
         const userId = req.result._id;
 
-        const video = await SolutionVideo.findByIdAndDelete(problemId);
+        const video = await SolutionVideo.findById(videoId);
         if(!video){
             return res.status(404).json({error: "Video not found"});
         }
 
+        // Check if user owns the video or is admin
+        if(video.userId.toString() !== userId.toString() && req.result.role !== 'admin'){
+            return res.status(403).json({error: "Not authorized to delete this video"});
+        }
+
+        // Delete from database
+        await SolutionVideo.findByIdAndDelete(videoId);
+
+        // Delete from cloudinary
         await cloudinary.uploader.destroy(video.cloudinaryPublicId, {resource_type: 'video', invalidate: true});
 
         res.status(200).json({message: "Video deleted successfully"});
     }
     catch(err){
+        console.error('Video delete error:', err);
         res.status(500).json({error: "Failed to delete video"});
+    }
+}
+
+const getVideoByProblemId = async (req, res) => {
+    try {
+        const { problemId } = req.params;
+
+        // Find video for this problem
+        const video = await SolutionVideo.findOne({ problemId })
+            .populate('userId', 'firstName lastName')
+            .lean();
+
+        if (!video) {
+            return res.status(404).json({ error: "No video found for this problem" });
+        }
+
+        res.status(200).json({
+            secureUrl: video.secureUrl,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+            uploadedBy: video.userId ? `${video.userId.firstName} ${video.userId.lastName || ''}`.trim() : 'Admin',
+            uploadedAt: video.createdAt
+        });
+    } catch (err) {
+        console.error('Get video error:', err);
+        res.status(500).json({ error: "Failed to fetch video" });
     }
 }
 
 module.exports = {
     generateUploadSignature,
     saveVideoMetadata,
-    VideoDelete
+    VideoDelete,
+    getVideoByProblemId
 }

@@ -20,17 +20,17 @@ const ProblemInteraction = ({ problemId }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch like status and count
         const likeResponse = await axiosClient.get(`/interaction/problem/${problemId}/like`);
         setLikesCount(likeResponse.data.likesCount || 0);
         setIsLiked(likeResponse.data.isLiked || false);
-        
+
         // Fetch comments
         const commentsResponse = await axiosClient.get(`/interaction/problem/${problemId}/comments`);
         setComments(commentsResponse.data.comments || []);
         setCommentsCount(commentsResponse.data.totalCount || 0);
-        
+
       } catch (error) {
         console.error('Failed to fetch interaction data:', error);
         // Set to zero on error - NO FAKE DATA
@@ -67,11 +67,11 @@ const ProblemInteraction = ({ problemId }) => {
     try {
       // Make API call
       const response = await axiosClient.post(`/interaction/problem/${problemId}/like`);
-      
+
       // Update with server response
       setIsLiked(response.data.isLiked);
       setLikesCount(response.data.likesCount);
-      
+
     } catch (error) {
       console.error('Failed to toggle like:', error);
       // Revert on error
@@ -83,7 +83,7 @@ const ProblemInteraction = ({ problemId }) => {
 
   const handleCommentToggle = () => {
     setShowComments(!showComments);
-    
+
     // Auto-focus input when opening comments
     if (!showComments) {
       setTimeout(() => {
@@ -94,7 +94,7 @@ const ProblemInteraction = ({ problemId }) => {
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!user) {
       alert('Please login to comment');
       return;
@@ -125,10 +125,49 @@ const ProblemInteraction = ({ problemId }) => {
     }
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleCommentSubmit(e);
+    }
+  };
+
+  const handleCommentLike = async (commentId, currentLikes) => {
+    if (!user) {
+      alert('Please login to like comments');
+      return;
+    }
+
+    // Optimistic update
+    setComments(prev => prev.map(comment => {
+      if (comment.id === commentId) {
+        const isLiked = comment.isLikedByUser || false;
+        return {
+          ...comment,
+          likes: isLiked ? (comment.likes - 1) : (comment.likes + 1),
+          isLikedByUser: !isLiked
+        };
+      }
+      return comment;
+    }));
+
+    try {
+      // Make API call
+      await axiosClient.post(`/interaction/comment/${commentId}/like`);
+    } catch (error) {
+      console.error('Failed to like comment:', error);
+      // Revert on error
+      setComments(prev => prev.map(comment => {
+        if (comment.id === commentId) {
+          return {
+            ...comment,
+            likes: currentLikes,
+            isLikedByUser: !comment.isLikedByUser
+          };
+        }
+        return comment;
+      }));
+      alert('Failed to like comment. Please try again.');
     }
   };
 
@@ -139,11 +178,11 @@ const ProblemInteraction = ({ problemId }) => {
 
     try {
       const response = await axiosClient.delete(`/interaction/comment/${commentId}`);
-      
+
       // Remove comment from list
       setComments(prev => prev.filter(c => c.id !== commentId));
       setCommentsCount(response.data.commentsCount);
-      
+
     } catch (error) {
       console.error('Failed to delete comment:', error);
       alert('Failed to delete comment. Please try again.');
@@ -203,17 +242,15 @@ const ProblemInteraction = ({ problemId }) => {
         {/* Like Button */}
         <button
           onClick={handleLike}
-          className={`group flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            isLiked
-              ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border border-red-500/30 shadow-lg shadow-red-500/10'
-              : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:bg-slate-700 hover:text-red-400 hover:border-red-500/30'
-          }`}
+          className={`group flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${isLiked
+            ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border border-red-500/30 shadow-lg shadow-red-500/10'
+            : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:bg-slate-700 hover:text-red-400 hover:border-red-500/30'
+            }`}
         >
           <div className="relative">
             <svg
-              className={`w-5 h-5 transition-all duration-300 ${
-                isLiked ? 'fill-current scale-110' : 'group-hover:scale-110'
-              } ${likeAnimation ? 'animate-bounce' : ''}`}
+              className={`w-5 h-5 transition-all duration-300 ${isLiked ? 'fill-current scale-110' : 'group-hover:scale-110'
+                } ${likeAnimation ? 'animate-bounce' : ''}`}
               fill={isLiked ? 'currentColor' : 'none'}
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -242,11 +279,10 @@ const ProblemInteraction = ({ problemId }) => {
         {/* Comment Button */}
         <button
           onClick={handleCommentToggle}
-          className={`group flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-            showComments
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg shadow-cyan-500/10'
-              : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:bg-slate-700 hover:text-cyan-400 hover:border-cyan-500/30'
-          }`}
+          className={`group flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${showComments
+            ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg shadow-cyan-500/10'
+            : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:bg-slate-700 hover:text-cyan-400 hover:border-cyan-500/30'
+            }`}
         >
           <svg
             className={`w-5 h-5 transition-all duration-300 ${showComments ? 'scale-110' : 'group-hover:scale-110'}`}
@@ -268,7 +304,7 @@ const ProblemInteraction = ({ problemId }) => {
         </button>
 
         {/* Share Button */}
-        <button 
+        <button
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
             alert('Link copied to clipboard!');
@@ -284,9 +320,8 @@ const ProblemInteraction = ({ problemId }) => {
 
       {/* Comments Section */}
       <div
-        className={`transition-all duration-500 ease-in-out overflow-hidden ${
-          showComments ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${showComments ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
       >
         <div className="border-t border-slate-700/50 pt-6">
           {/* Add Comment Form */}
@@ -314,7 +349,7 @@ const ProblemInteraction = ({ problemId }) => {
                     ref={commentInputRef}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                    onKeyDown={handleKeyDown}
                     placeholder="Share your thoughts, approach, or ask questions about this problem..."
                     className="w-full px-4 py-3 bg-slate-800/80 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-400 resize-none focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-200 backdrop-blur-sm"
                     rows={3}
@@ -350,7 +385,7 @@ const ProblemInteraction = ({ problemId }) => {
           ) : (
             <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700 rounded-xl text-center">
               <p className="text-slate-400 mb-3">Join the discussion!</p>
-              <button 
+              <button
                 onClick={() => window.location.href = '/login'}
                 className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-medium hover:from-cyan-600 hover:to-blue-600 transition-all duration-200"
               >
@@ -363,8 +398,8 @@ const ProblemInteraction = ({ problemId }) => {
           <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
             {comments.length > 0 ? (
               comments.map((comment) => (
-                <div 
-                  key={comment.id} 
+                <div
+                  key={comment.id}
                   className="flex gap-4 p-5 bg-gradient-to-r from-slate-800/60 to-slate-700/60 backdrop-blur-sm rounded-xl border border-slate-700/50 hover:border-slate-600/50 transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Comment Avatar */}
@@ -391,7 +426,7 @@ const ProblemInteraction = ({ problemId }) => {
                           {formatTimeAgo(comment.timestamp)}
                         </span>
                       </div>
-                      
+
                       {/* Delete button for own comments or admin */}
                       {user && (user._id === comment.userId || user.role === 'admin') && (
                         <button
@@ -405,15 +440,27 @@ const ProblemInteraction = ({ problemId }) => {
                     <div className="text-slate-300 text-sm leading-relaxed break-words mb-3">
                       {formatCommentText(comment.text)}
                     </div>
-                    
+
                     {/* Comment Actions */}
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      <button
+                        onClick={() => handleCommentLike(comment.id, comment.likes)}
+                        className={`flex items-center gap-1 text-xs transition-colors duration-200 ${comment.isLikedByUser
+                          ? 'text-red-400 hover:text-red-300'
+                          : 'text-slate-500 hover:text-red-400'
+                          }`}
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill={comment.isLikedByUser ? 'currentColor' : 'none'}
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                         {comment.likes || 0}
-                      </div>
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -68,7 +68,7 @@ const SubmissionHistory = ({ problemId }) => {
   return (
     <div className="container mx-auto p-4">
       <h2 className="text-2xl font-bold mb-6 text-center">Submission History</h2>
-      
+
       {submissions.length === 0 ? (
         <div className="alert alert-info shadow-lg">
           <div>
@@ -104,13 +104,13 @@ const SubmissionHistory = ({ problemId }) => {
                         {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
                       </span>
                     </td>
-                    
+
                     <td className="font-mono">{sub.runtime}sec</td>
                     <td className="font-mono">{formatMemory(sub.memory)}</td>
                     <td className="font-mono">{sub.testCasesPassed}/{sub.testCasesTotal}</td>
                     <td>{formatDate(sub.createdAt)}</td>
                     <td>
-                      <button 
+                      <button
                         className="btn btn-s btn-outline"
                         onClick={() => setSelectedSubmission(sub)}
                       >
@@ -136,7 +136,7 @@ const SubmissionHistory = ({ problemId }) => {
             <h3 className="font-bold text-lg mb-4">
               Submission Details: {selectedSubmission.language}
             </h3>
-            
+
             <div className="mb-4">
               <div className="flex flex-wrap gap-2 mb-2">
                 <span className={`badge ${getStatusColor(selectedSubmission.status)}`}>
@@ -152,7 +152,7 @@ const SubmissionHistory = ({ problemId }) => {
                   Passed: {selectedSubmission.testCasesPassed}/{selectedSubmission.testCasesTotal}
                 </span>
               </div>
-              
+
               {selectedSubmission.errorMessage && (
                 <div className="alert alert-error mt-2">
                   <div>
@@ -161,13 +161,13 @@ const SubmissionHistory = ({ problemId }) => {
                 </div>
               )}
             </div>
-            
+
             <pre className="p-4 bg-gray-900 text-gray-100 rounded overflow-x-auto">
               <code>{selectedSubmission.code}</code>
             </pre>
-            
+
             <div className="modal-action">
-              <button 
+              <button
                 className="btn"
                 onClick={() => setSelectedSubmission(null)}
               >
