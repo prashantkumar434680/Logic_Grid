@@ -40,7 +40,11 @@ const AdminVideo = () => {
     const { id } = deleteModal;
     try {
       setDeleting(true);
-      await axiosClient.delete(`/video/delete/${id}`);
+      // First fetch the video to get the video ID
+      const videoResponse = await axiosClient.get(`/video/problem/${id}`);
+      const videoId = videoResponse.data._id;
+      // Then delete using the video ID
+      await axiosClient.delete(`/video/delete/${videoId}`);
       setProblems(problems.filter((problem) => problem._id !== id));
       closeDeleteModal();
     } catch (err) {

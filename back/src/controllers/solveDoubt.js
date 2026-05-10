@@ -3,18 +3,23 @@ const { GoogleGenAI } = require("@google/genai");
 
 const solveDoubt = async(req , res)=>{
 
-
     try{
 
-        const {messages,title,description,testCases,startCode} = req.body;
+        const {messages, title, description, testCases, startCode} = req.body;
+        
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({
+                message: "Invalid request format"
+            });
+        }
+
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
        
-        async function main() {
         const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: messages,
-        config: {
-        systemInstruction: `
+            model: "gemini-2.5-flash",
+            contents: messages,
+            config: {
+                systemInstruction: `
 You are an expert Data Structures and Algorithms (DSA) tutor specializing in helping users solve coding problems.
 Your role is strictly limited to DSA-related assistance only.
 
@@ -82,21 +87,19 @@ Your role is strictly limited to DSA-related assistance only.
 - Promote best coding practices
 
 Remember: Your goal is to help users learn and understand DSA concepts through the lens of the current problem, not just to provide quick answers.
-`},
-    });
-     
-    res.status(201).json({
-        message:response.text
-    });
-    console.log(response.text);
-    }
-
-    main();
-      
+`
+            },
+        });
+         
+        res.status(200).json({
+            message: response.text
+        });
+        
     }
     catch(err){
+        console.error("Chat AI Error:", err);
         res.status(500).json({
-            message: "Internal server error"
+            message: "Internal server error. Please try again."
         });
     }
 }

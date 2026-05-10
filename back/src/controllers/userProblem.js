@@ -1,8 +1,11 @@
+// userProblem.js
+
 const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtility");
 const Problem = require("../Models/Problem");
 const User = require("../Models/User");
 const Submission = require("../Models/submission");
 const mongoose = require('mongoose');
+const solutionVideo = require('../Models/solutionVideo');
 const {
   getCurrentDailyProblem,
   rotateDailyProblem,
@@ -187,7 +190,6 @@ const deleteProblem = async(req,res)=>{
   }
 }
 
-
 const getProblemById = async(req,res)=>{
 
   const {id} = req.params;
@@ -196,18 +198,69 @@ const getProblemById = async(req,res)=>{
     if(!id)
       return res.status(400).send("ID is Missing");
 
-    const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution isDailyProblem activeDate');
+    const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution ');
    
+    // video ka jo bhi url wagera le aao
+
    if(!getProblem)
     return res.status(404).send("Problem is Missing");
 
+   const videos = await solutionVideo.findOne({problemId:id});
 
+   if(videos){   
+    
+   const responseData = {
+    ...getProblem.toObject(),
+    secureUrl:videos.secureUrl,
+    thumbnailUrl : videos.thumbnailUrl,
+    duration : videos.duration,
+   } 
+  
+   return res.status(200).send(responseData);
+   }
+    
    res.status(200).send(getProblem);
+
   }
   catch(err){
-    res.status(500).send("Error: okay "+err);
+    res.status(500).send("Error: "+err);
   }
 }
+
+
+// const getProblemById = async(req,res)=>{
+
+//   const {id} = req.params;
+//   try{
+     
+//     if(!id)
+//       return res.status(400).send("ID is Missing");
+
+//     const getProblem = await Problem.findById(id).select('_id title description difficulty tags visibleTestCases startCode referenceSolution isDailyProblem activeDate');
+   
+//    if(!getProblem)
+//     return res.status(404).send("Problem is Missing");
+
+// const videos = await SolutionVideo.findOne({problemId:id});
+//   if(videos){   
+    
+//    const responseData = {
+//     ...getProblem.toObject(),
+//     secureUrl:videos.secureUrl,
+//     thumbnailUrl : videos.thumbnailUrl,
+//     duration : videos.duration,
+//    } 
+  
+//    return res.status(200).send(responseData);
+//    }
+    
+//    res.status(200).send(getProblem);
+
+//   }
+//   catch(err){
+//     res.status(500).send("Error: okay "+err);
+//   }
+// }
 
 const getAllProblem = async(req,res)=>{
 

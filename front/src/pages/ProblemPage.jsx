@@ -1,5 +1,16 @@
 
 
+
+
+
+
+
+
+
+
+
+// // ProblemPage.jsx
+
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import Editor from '@monaco-editor/react';
@@ -154,6 +165,9 @@ const ProblemPage = () => {
   const [activeLeftTab,    setActiveLeftTab]    = useState('description');
   const [activeRightTab,   setActiveRightTab]   = useState('code');
   const [videoData,        setVideoData]        = useState(null);
+  const [chatHistory,      setChatHistory]      = useState([
+    { role: 'model', content: "Hi! I'm your DSA tutor. Ask me anything about this problem - I can help with hints, code review, or explain solutions!" }
+  ]);
   const [panelWidth,       setPanelWidth]       = useState(50);          // left % width
   const isDragging = useRef(false);
   const editorRef = useRef(null);
@@ -170,9 +184,15 @@ const ProblemPage = () => {
         setCode(getInitialCode(res.data.startCode, selectedLanguage));
         try {
           const vr = await axiosClient.get(`/video/problem/${problemId}`);
+          console.log('Video data fetched:', vr.data);
           setVideoData(vr.data);
-        } catch { setVideoData(null); }
-      } catch { /* silent */ }
+        } catch (err) {
+          console.log('No video found for this problem:', err.message);
+          setVideoData(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch problem:', err);
+      }
       setLoading(false);
     };
     fetchProblem();
@@ -400,9 +420,13 @@ const ProblemPage = () => {
                   {activeLeftTab === 'editorial' && (
                     <div>
                       <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '22px', margin: '0 0 20px' }}>Editorial</h2>
-                      {videoData ? (
+                      {videoData && videoData.secureUrl ? (
                         <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>
-                          <Editorial secureUrl={videoData.secureUrl} thumbnailUrl={videoData.thumbnailUrl} duration={videoData.duration} />
+                          <Editorial 
+                            secureUrl={videoData.secureUrl} 
+                            thumbnailUrl={videoData.thumbnailUrl} 
+                            duration={videoData.duration}
+                          />
                           {videoData.uploadedBy && (
                             <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginTop: '16px' }}>
                               Uploaded by {videoData.uploadedBy} on {new Date(videoData.uploadedAt).toLocaleDateString()}
@@ -466,7 +490,7 @@ const ProblemPage = () => {
                   {activeLeftTab === 'ChatAI' && (
                     <div>
                       <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '22px', margin: '0 0 20px' }}>✨ AI Assistant</h2>
-                      <ChatAi problem={problem} />
+                      <ChatAi problem={problem} chatHistory={chatHistory} setChatHistory={setChatHistory} />
                     </div>
                   )}
                 </>

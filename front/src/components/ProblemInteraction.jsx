@@ -479,7 +479,7 @@ const ProblemInteraction = ({ problemId }) => {
           </div>
         </div>
       </div>
-
+{/* 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -495,7 +495,7 @@ const ProblemInteraction = ({ problemId }) => {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(100, 116, 139, 0.7);
         }
-      `}</style>
+      `}</style> */}
     </div>
   );
 };
