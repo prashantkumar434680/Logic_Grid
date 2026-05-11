@@ -177,7 +177,7 @@ function AdminPanel() {
     setSubmitting(true);
     try {
       await axiosClient.post('/problem/create', data);
-      navigate('/');
+      navigate('/admin');
     } catch (error) {
       const message = error.response?.data?.message || error.response?.data || error.message;
       alert(`Error: ${message}`);
@@ -243,7 +243,7 @@ function AdminPanel() {
         }}>
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/admin')}
             className="ap-btn-ghost"
             style={{
               display: 'flex', alignItems: 'center', gap: '8px',

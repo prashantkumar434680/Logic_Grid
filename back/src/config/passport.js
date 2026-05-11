@@ -56,7 +56,7 @@ passport.use(
 
         return done(null, user);
       } catch (err) {
-        console.log("Google OAuth error:", err);
+        // console.log("Google OAuth error:", err);
         return done(err, null);
       }
     },
@@ -115,7 +115,7 @@ passport.use(
 
         return done(null, user);
       } catch (err) {
-        console.log("GitHub OAuth error:", err);
+        // console.log("GitHub OAuth error:", err);
         return done(err, null);
       }
     },
