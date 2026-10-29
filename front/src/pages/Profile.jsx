@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router';
 import axiosClient from '../utils/axiosClient';
+import DsaLearningAssistant from '../components/DsaLearningAssistant';
 
 export default function ProfilePage() {
   const { user } = useSelector((state) => state.auth);
@@ -9,20 +10,35 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState(null);
   const [solvedProblems, setSolvedProblems] = useState([]);
   const [submissionCalendar, setSubmissionCalendar] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('activity');
+  const [activeTab, setActiveTab] = useState('analytics');
+  const [selectedTopicForAi, setSelectedTopicForAi] = useState(null);
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         setLoading(true);
-        const profileResponse = await axiosClient.get('/userData/profile');
-        setProfileData(profileResponse.data.user);
-        const solvedResponse = await axiosClient.get('/problem/problemSolvedByUser');
-        setSolvedProblems(Array.isArray(solvedResponse.data) ? solvedResponse.data : []);
-        const calendarResponse = await axiosClient.get('/submission/calendar');
-        setSubmissionCalendar(calendarResponse.data.counts || []);
+        const [profileRes, solvedRes, calendarRes, analyticsRes] = await Promise.allSettled([
+          axiosClient.get('/userData/profile'),
+          axiosClient.get('/problem/problemSolvedByUser'),
+          axiosClient.get('/submission/calendar'),
+          axiosClient.get('/learning/analytics'),
+        ]);
+
+        if (profileRes.status === 'fulfilled') {
+          setProfileData(profileRes.value.data.user);
+        }
+        if (solvedRes.status === 'fulfilled') {
+          setSolvedProblems(Array.isArray(solvedRes.value.data) ? solvedRes.value.data : []);
+        }
+        if (calendarRes.status === 'fulfilled') {
+          setSubmissionCalendar(calendarRes.value.data.counts || []);
+        }
+        if (analyticsRes.status === 'fulfilled') {
+          setAnalyticsData(analyticsRes.value.data);
+        }
       } catch (err) {
         console.error('Failed to fetch data:', err);
         setError('Failed to load profile data');
@@ -38,7 +54,7 @@ export default function ProfilePage() {
       <div style={styles.loadingScreen}>
         <div style={styles.loadingInner}>
           <div style={styles.loadingOrb} />
-          <p style={styles.loadingText}>Loading your profile…</p>
+          <p style={styles.loadingText}>Loading your profile & skill analytics…</p>
         </div>
         <style>{keyframes}</style>
       </div>
@@ -124,6 +140,12 @@ export default function ProfilePage() {
 
   const initials = `${userData?.firstName?.charAt(0) || ''}${userData?.lastName?.charAt(0) || ''}`.toUpperCase() || 'U';
 
+  const overview = analyticsData?.overview || {};
+  const topicWise = analyticsData?.topicWise || [];
+  const strongTopics = analyticsData?.strongTopics || [];
+  const weakTopics = analyticsData?.weakTopics || [];
+  const insufficientPracticeTopics = analyticsData?.insufficientPracticeTopics || [];
+
   return (
     <div style={styles.root}>
       <style>{keyframes}</style>
@@ -149,7 +171,6 @@ export default function ProfilePage() {
 
       {/* Main */}
       <main style={styles.main}>
-
         {/* ── Hero Banner ── */}
         <div style={styles.heroBanner}>
           <div style={styles.heroBannerPattern} />
@@ -200,18 +221,261 @@ export default function ProfilePage() {
 
         {/* ── Tabs ── */}
         <div style={styles.tabBar}>
-          {['activity', 'solved'].map(tab => (
+          {[
+            { id: 'analytics', label: '⚡ DSA Skill Analytics' },
+            { id: 'activity',  label: '📅 Submission Activity' },
+            { id: 'solved',    label: '✓ Solved Problems' },
+          ].map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{ ...styles.tabBtn, ...(activeTab === tab ? styles.tabBtnActive : {}) }}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{ ...styles.tabBtn, ...(activeTab === tab.id ? styles.tabBtnActive : {}) }}
             >
-              {tab === 'activity' ? '⚡ Activity' : '✓ Solved Problems'}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {/* ── Activity Tab ── */}
+        {/* ── Tab 1: DSA Skill Analytics ── */}
+        {activeTab === 'analytics' && (
+          <div style={styles.panel}>
+            {/* Header */}
+            <div style={styles.panelHeader}>
+              <div>
+                <h2 style={styles.panelTitle}>Personalized DSA Skill Analytics</h2>
+                <p style={styles.panelSub}>
+                  Explainable mastery evaluation based on your unique solve rates, attempt accuracy, and problem difficulty.
+                </p>
+              </div>
+              <div style={styles.trendBadgeWrap}>
+                <span style={styles.trendLabel}>Recent Trend:</span>
+                <span
+                  style={{
+                    ...styles.trendBadge,
+                    background:
+                      overview.recentTrend === 'improving'
+                        ? 'rgba(16,185,129,0.15)'
+                        : overview.recentTrend === 'declining'
+                        ? 'rgba(239,68,68,0.15)'
+                        : 'rgba(6,182,212,0.15)',
+                    color:
+                      overview.recentTrend === 'improving'
+                        ? '#10b981'
+                        : overview.recentTrend === 'declining'
+                        ? '#ef4444'
+                        : '#06b6d4',
+                    border:
+                      overview.recentTrend === 'improving'
+                        ? '1px solid rgba(16,185,129,0.3)'
+                        : overview.recentTrend === 'declining'
+                        ? '1px solid rgba(239,68,68,0.3)'
+                        : '1px solid rgba(6,182,212,0.3)',
+                  }}
+                >
+                  {overview.recentTrend === 'improving' ? '📈 Improving' : overview.recentTrend === 'declining' ? '📉 Needs Focus' : '➡️ Steady'}
+                </span>
+              </div>
+            </div>
+
+            {/* Top KPI Metrics Row */}
+            <div style={styles.analyticsKpiGrid}>
+              <div style={styles.kpiCard}>
+                <p style={styles.kpiLabel}>Estimated Overall Mastery</p>
+                <div style={styles.kpiValueRow}>
+                  <span style={{ ...styles.kpiNumber, color: '#06b6d4' }}>
+                    {overview.estimatedOverallMastery ?? 0}%
+                  </span>
+                  <div style={styles.masteryPill}>
+                    {(overview.estimatedOverallMastery ?? 0) < 45
+                      ? 'Beginner'
+                      : (overview.estimatedOverallMastery ?? 0) < 75
+                      ? 'Intermediate'
+                      : 'Advanced'}
+                  </div>
+                </div>
+                <div style={styles.progressBarBg}>
+                  <div
+                    style={{
+                      ...styles.progressBarFill,
+                      width: `${overview.estimatedOverallMastery ?? 0}%`,
+                      background: 'linear-gradient(90deg, #06b6d4, #3b82f6)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.kpiCard}>
+                <p style={styles.kpiLabel}>Unique Problems Solved</p>
+                <div style={styles.kpiValueRow}>
+                  <span style={{ ...styles.kpiNumber, color: '#10b981' }}>
+                    {overview.totalUniqueSolved ?? 0}
+                  </span>
+                  <span style={styles.kpiSubText}>
+                    / {overview.totalAvailableInPlatform ?? 0} total on platform
+                  </span>
+                </div>
+                <p style={styles.kpiFootnote}>
+                  Attempted: {overview.totalUniqueAttempted ?? 0} unique
+                </p>
+              </div>
+
+              <div style={styles.kpiCard}>
+                <p style={styles.kpiLabel}>Observed Success Rate</p>
+                <div style={styles.kpiValueRow}>
+                  <span style={{ ...styles.kpiNumber, color: '#f59e0b' }}>
+                    {overview.observedSuccessRate ?? 0}%
+                  </span>
+                </div>
+                <p style={styles.kpiFootnote}>
+                  {overview.acceptedSubmissions ?? 0} accepted / {overview.totalSubmissions ?? 0} total submissions
+                </p>
+              </div>
+            </div>
+
+            {/* Strengths & Weaknesses Summary Badges */}
+            <div style={styles.insightsRow}>
+              <div style={styles.insightBox}>
+                <span style={styles.insightTitleGreen}>🌟 Strong Topics ({strongTopics.length})</span>
+                <div style={styles.chipRow}>
+                  {strongTopics.length > 0 ? (
+                    strongTopics.map((t) => (
+                      <span key={t.topicKey} style={styles.strongChip}>
+                        {t.topicLabel} • {t.estimatedMastery}%
+                      </span>
+                    ))
+                  ) : (
+                    <span style={styles.noneNotice}>Keep practicing to develop strong mastery</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.insightBox}>
+                <span style={styles.insightTitleRed}>⚠️ Weak Topics ({weakTopics.length})</span>
+                <div style={styles.chipRow}>
+                  {weakTopics.length > 0 ? (
+                    weakTopics.map((t) => (
+                      <span key={t.topicKey} style={styles.weakChip}>
+                        {t.topicLabel} • {t.estimatedMastery}%
+                      </span>
+                    ))
+                  ) : (
+                    <span style={styles.noneNotice}>No topics categorized as weak</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.insightBox}>
+                <span style={styles.insightTitleBlue}>
+                  📘 Insufficient Practice ({insufficientPracticeTopics.length})
+                </span>
+                <div style={styles.chipRow}>
+                  {insufficientPracticeTopics.length > 0 ? (
+                    insufficientPracticeTopics.slice(0, 4).map((t) => (
+                      <span key={t.topicKey} style={styles.unpracticedChip}>
+                        {t.topicLabel}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={styles.noneNotice}>All topics have active baseline data</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Topic-Wise Cards Grid */}
+            <div style={{ marginTop: 32 }}>
+              <h3 style={styles.sectionHeading}>Topic-Wise Mastery & Learning Paths</h3>
+              <p style={styles.sectionSub}>
+                Click <strong>"Learn with AI"</strong> on any topic to retrieve grounded textbook concepts, variable dry runs, and personalized practice.
+              </p>
+
+              <div style={styles.topicGrid}>
+                {topicWise.map((t) => {
+                  const statusColors = {
+                    strong: { text: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)', label: 'Strong' },
+                    moderate: { text: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', label: 'Moderate' },
+                    weak: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', label: 'Weak' },
+                    insufficient_practice: { text: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)', label: 'Insufficient Practice' },
+                  };
+                  const sc = statusColors[t.status] || statusColors.insufficient_practice;
+
+                  return (
+                    <div key={t.topicKey} style={styles.topicCard}>
+                      <div style={styles.topicCardHeader}>
+                        <div>
+                          <h4 style={styles.topicCardTitle}>{t.topicLabel}</h4>
+                          <span style={{ ...styles.topicStatusBadge, color: sc.text, background: sc.bg, border: `1px solid ${sc.border}` }}>
+                            {sc.label}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={styles.topicMasteryNum}>{t.estimatedMastery}%</span>
+                          <span style={styles.topicMasteryLabel}>Mastery</span>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div style={styles.progressBarBg}>
+                        <div
+                          style={{
+                            ...styles.progressBarFill,
+                            width: `${Math.max(4, t.estimatedMastery)}%`,
+                            background:
+                              t.status === 'strong'
+                                ? 'linear-gradient(90deg, #10b981, #06b6d4)'
+                                : t.status === 'weak'
+                                ? 'linear-gradient(90deg, #ef4444, #f59e0b)'
+                                : 'linear-gradient(90deg, #06b6d4, #6366f1)',
+                          }}
+                        />
+                      </div>
+
+                      {/* Detail Stats */}
+                      <div style={styles.topicStatsRow}>
+                        <div style={styles.topicStatItem}>
+                          <span style={styles.topicStatVal}>{t.solvedUnique} / {t.totalInPlatform}</span>
+                          <span style={styles.topicStatLbl}>Solved</span>
+                        </div>
+                        <div style={styles.topicStatItem}>
+                          <span style={styles.topicStatVal}>{t.attemptedUnique}</span>
+                          <span style={styles.topicStatLbl}>Attempted</span>
+                        </div>
+                        <div style={styles.topicStatItem}>
+                          <span style={styles.topicStatVal}>{t.observedSuccessRate}%</span>
+                          <span style={styles.topicStatLbl}>Accuracy</span>
+                        </div>
+                      </div>
+
+                      {/* Reason */}
+                      <p style={styles.topicReasonText}>
+                        {t.recommendationReason}
+                      </p>
+
+                      {/* Learn with AI Button */}
+                      <button
+                        onClick={() => setSelectedTopicForAi(t)}
+                        style={styles.learnAiBtn}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(6,182,212,0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>✨</span>
+                        <span>Learn {t.topicLabel} with AI</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab 2: Activity Tab ── */}
         {activeTab === 'activity' && (
           <div style={styles.panel}>
             {/* Header */}
@@ -274,7 +538,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ── Solved Tab ── */}
+        {/* ── Tab 3: Solved Tab ── */}
         {activeTab === 'solved' && (
           <div style={styles.panel}>
             <div style={styles.panelHeader}>
@@ -319,6 +583,15 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Learning Assistant Modal ── */}
+        {selectedTopicForAi && (
+          <DsaLearningAssistant
+            topic={selectedTopicForAi}
+            initialReason={selectedTopicForAi.recommendationReason}
+            onClose={() => setSelectedTopicForAi(null)}
+          />
         )}
 
         {/* ── Footer ── */}
@@ -493,59 +766,140 @@ const styles = {
     backdropFilter: 'blur(12px)',
   },
   panelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 28 },
-  panelTitle: { margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.5px' },
-  panelSub: { margin: 0, fontSize: 13, color: '#64748b' },
+  panelTitle: { margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#f1f5f9', letterSpacing: '-0.5px' },
+  panelSub: { margin: 0, fontSize: 13, color: '#94a3b8', maxWidth: 640 },
+
+  // Trend
+  trendBadgeWrap: { display: 'flex', alignItems: 'center', gap: 8 },
+  trendLabel: { fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' },
+  trendBadge: { fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 20 },
+
+  // Analytics KPI Grid
+  analyticsKpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 },
+  kpiCard: {
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    padding: '20px 24px',
+  },
+  kpiLabel: { fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, margin: '0 0 8px' },
+  kpiValueRow: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 },
+  kpiNumber: { fontSize: 36, fontWeight: 800, letterSpacing: '-1px' },
+  kpiSubText: { fontSize: 13, color: '#94a3b8' },
+  kpiFootnote: { fontSize: 12, color: '#64748b', margin: 0 },
+  masteryPill: {
+    fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12,
+    background: 'rgba(6,182,212,0.15)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)',
+  },
+  progressBarBg: { width: '100%', height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 10, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 10, transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' },
+
+  // Insights Row
+  insightsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 },
+  insightBox: {
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    padding: '16px 20px',
+  },
+  insightTitleGreen: { display: 'block', fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 },
+  insightTitleRed:   { display: 'block', fontSize: 12, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 },
+  insightTitleBlue:  { display: 'block', fontSize: 12, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 },
+  chipRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  strongChip: { fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 12, background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)' },
+  weakChip: { fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 12, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' },
+  unpracticedChip: { fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 12, background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.25)' },
+  noneNotice: { fontSize: 12, color: '#64748b', fontStyle: 'italic' },
+
+  // Topic Section
+  sectionHeading: { fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: '0 0 4px' },
+  sectionSub: { fontSize: 13, color: '#94a3b8', margin: '0 0 20px' },
+  topicGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: 16 },
+  topicCard: {
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 18,
+    padding: '22px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    transition: 'all 0.25s',
+  },
+  topicCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  topicCardTitle: { fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 6px' },
+  topicStatusBadge: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '3px 8px', borderRadius: 10, letterSpacing: '0.04em' },
+  topicMasteryNum: { display: 'block', fontSize: 24, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 },
+  topicMasteryLabel: { fontSize: 10, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 },
+  topicStatsRow: { display: 'flex', justifyContent: 'space-between', margin: '14px 0 10px', padding: '10px 12px', background: 'rgba(0,0,0,0.25)', borderRadius: 10 },
+  topicStatItem: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  topicStatVal: { fontSize: 13, fontWeight: 700, color: '#e2e8f0' },
+  topicStatLbl: { fontSize: 10, color: '#64748b', textTransform: 'uppercase', marginTop: 2 },
+  topicReasonText: { fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px', minHeight: 36 },
+  learnAiBtn: {
+    width: '100%',
+    padding: '10px 16px',
+    borderRadius: 12,
+    border: '1px solid rgba(6,182,212,0.4)',
+    background: 'linear-gradient(135deg, rgba(6,182,212,0.18), rgba(59,130,246,0.18))',
+    color: '#06b6d4',
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    transition: 'all 0.2s',
+  },
+
+  // Calendar
   streakRow: { display: 'flex', gap: 12 },
   streakChip: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
-    padding: '10px 20px', borderRadius: 12,
-    background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.2)',
-    gap: 2,
+    padding: '8px 16px', borderRadius: 12,
+    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
   },
-  streakVal: { fontSize: 22, fontWeight: 800, color: '#06b6d4', lineHeight: 1 },
-  streakLabel: { fontSize: 11, color: '#64748b', fontWeight: 500 },
-
-  // Calendar
+  streakVal: { fontSize: 20, fontWeight: 800, color: '#06b6d4', lineHeight: 1 },
+  streakLabel: { fontSize: 11, color: '#64748b', marginTop: 4 },
   calendarGrid: {
-    display: 'grid', gridTemplateRows: 'repeat(7, 14px)', gridAutoFlow: 'column',
-    gap: 3, padding: '16px', borderRadius: 14,
-    background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.05)',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(52, 1fr)',
+    gridTemplateRows: 'repeat(7, 1fr)',
+    gridAutoFlow: 'column',
+    gap: 3,
+    marginBottom: 8,
   },
-  calCell: { width: 14, height: 14, borderRadius: 3, transition: 'transform 0.15s, box-shadow 0.15s', cursor: 'default' },
-  monthLabels: { display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingLeft: 16, paddingRight: 16 },
+  calCell: { width: 11, height: 11, borderRadius: 2 },
+  monthLabels: { display: 'flex', justifyContent: 'space-between', padding: '0 4px', marginBottom: 12 },
   monthLabel: { fontSize: 11, color: '#475569' },
-  legend: { display: 'flex', alignItems: 'center', gap: 4, marginTop: 12, paddingLeft: 16 },
-  legendText: { fontSize: 11, color: '#475569', marginRight: 4 },
-  legendCell: { width: 13, height: 13, borderRadius: 3 },
+  legend: { display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' },
+  legendText: { fontSize: 11, color: '#475569', margin: '0 4px' },
+  legendCell: { width: 10, height: 10, borderRadius: 2 },
 
-  // Problem list
+  // Solved
   problemList: { display: 'flex', flexDirection: 'column', gap: 10 },
   problemRow: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '14px 18px', borderRadius: 14,
-    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-    transition: 'border-color 0.2s, background 0.2s',
+    background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
   },
   problemLeft: { display: 'flex', alignItems: 'center', gap: 14 },
   checkCircle: {
-    width: 34, height: 34, borderRadius: '50%',
-    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    width: 26, height: 26, borderRadius: '50%',
+    background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  problemTitle: { margin: '0 0 2px', fontSize: 14, fontWeight: 600, color: '#e2e8f0' },
-  problemSub: { margin: 0, fontSize: 12, color: '#475569' },
-  diffBadge: { fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, border: '1px solid' },
-
-  // Empty
+  problemTitle: { margin: '0 0 2px', fontSize: 14, fontWeight: 600, color: '#f1f5f9' },
+  problemSub: { margin: 0, fontSize: 12, color: '#64748b' },
+  diffBadge: { fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: '1px solid' },
   emptyState: { textAlign: 'center', padding: '48px 0' },
-  emptyIcon: { fontSize: 48, color: '#334155', marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: 700, color: '#64748b', margin: '0 0 8px' },
-  emptySub: { fontSize: 14, color: '#475569', margin: '0 0 24px' },
+  emptyIcon: { fontSize: 36, color: '#475569', marginBottom: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: 600, color: '#94a3b8', margin: '0 0 6px' },
+  emptySub: { fontSize: 13, color: '#475569', margin: '0 0 20px' },
   browseBtn: {
-    padding: '12px 28px', borderRadius: 12, border: 'none', cursor: 'pointer',
-    background: 'linear-gradient(135deg, #06b6d4, #6366f1)',
-    color: '#fff', fontWeight: 700, fontSize: 14,
-    boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
+    padding: '10px 22px', borderRadius: 10, border: 'none',
+    background: 'rgba(6,182,212,0.15)', color: '#06b6d4',
+    fontWeight: 600, cursor: 'pointer',
   },
 
   // Footer
@@ -590,441 +944,3 @@ const keyframes = `
     .footer-top { grid-template-columns: 1fr 1fr !important; }
   }
 `;
-
-
-
-
-
-
-
-
-
-
-
-// import { useState, useEffect } from 'react';
-// import { useSelector } from 'react-redux';
-// import { useNavigate } from 'react-router';
-// import axiosClient from '../utils/axiosClient';
-
-// export default function ProfilePage() {
-//   const { user } = useSelector((state) => state.auth);
-//   const navigate = useNavigate();
-//   const [profileData, setProfileData] = useState(null);
-//   const [solvedProblems, setSolvedProblems] = useState([]);
-//   const [submissionCalendar, setSubmissionCalendar] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState('');
-
-//   useEffect(() => {
-//     const fetchAllData = async () => {
-//       try {
-//         setLoading(true);
-        
-//         // Fetch profile data
-//         const profileResponse = await axiosClient.get('/userData/profile');
-//         setProfileData(profileResponse.data.user);
-        
-//         // Fetch solved problems
-//         const solvedResponse = await axiosClient.get('/problem/problemSolvedByUser');
-//         setSolvedProblems(Array.isArray(solvedResponse.data) ? solvedResponse.data : []);
-        
-//         // Fetch submission calendar
-//         const calendarResponse = await axiosClient.get('/submission/calendar');
-//         setSubmissionCalendar(calendarResponse.data.counts || []);
-        
-//       } catch (err) {
-//         console.error('Failed to fetch data:', err);
-//         setError('Failed to load profile data');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     if (user) {
-//       fetchAllData();
-//     }
-//   }, [user]);
-
-//   if (loading) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-//         <div className="text-center">
-//           <div className="loading loading-spinner loading-lg text-cyan-400"></div>
-//           <p className="text-slate-400 mt-4">Loading your profile...</p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-//         <div className="text-center">
-//           <div className="text-red-400 text-xl mb-4">⚠️ {error}</div>
-//           <button 
-//             onClick={() => window.location.reload()} 
-//             className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600"
-//           >
-//             Retry
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // Calculate max streak
-//   const calculateMaxStreak = (calendarData) => {
-//     let maxStreak = 0;
-//     let currentStreak = 0;
-    
-//     calendarData.forEach(day => {
-//       if (day.count > 0) {
-//         currentStreak++;
-//         maxStreak = Math.max(maxStreak, currentStreak);
-//       } else {
-//         currentStreak = 0;
-//       }
-//     });
-    
-//     return maxStreak;
-//   };
-
-//   // Generate calendar data
-//   const generateCalendar = () => {
-//     const today = new Date();
-//     const endDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-//     const startDate = new Date(endDate);
-//     startDate.setUTCDate(startDate.getUTCDate() - 363); // 364 days total
-
-//     const calendarData = [];
-//     const submissionMap = new Map();
-    
-//     // Create map of submission counts by date
-//     submissionCalendar.forEach(item => {
-//       if (item.date) {
-//         submissionMap.set(item.date, item.count || 0);
-//       }
-//     });
-
-//     // Generate 364 days of calendar data
-//     for (let i = 0; i < 364; i++) {
-//       const currentDate = new Date(startDate);
-//       currentDate.setUTCDate(startDate.getUTCDate() + i);
-      
-//       const dateStr = currentDate.toISOString().split('T')[0];
-//       const count = submissionMap.get(dateStr) || 0;
-      
-//       calendarData.push({
-//         date: dateStr,
-//         count: count,
-//         level: count === 0 ? 0 : Math.min(4, Math.ceil(count / 2)) // 0-4 levels
-//       });
-//     }
-
-//     return calendarData;
-//   };
-
-//   // Calculate stats from solved problems
-//   const calculateStats = () => {
-//     const totalSolved = solvedProblems.length;
-//     let easy = 0, medium = 0, hard = 0;
-    
-//     solvedProblems.forEach(problem => {
-//       const difficulty = problem?.difficulty || problem?.problemId?.difficulty;
-//       if (difficulty === 'easy') easy++;
-//       else if (difficulty === 'medium') medium++;
-//       else if (difficulty === 'hard') hard++;
-//     });
-
-//     return { totalSolved, easy, medium, hard };
-//   };
-
-//   const userData = profileData || user;
-//   const calendar = generateCalendar();
-//   const stats = calculateStats();
-//   const totalSubmissions = submissionCalendar.reduce((sum, item) => sum + (item.count || 0), 0);
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-//       {/* Simple Navbar */}
-//       <nav className="bg-slate-900/50 border-b border-slate-700 px-6 py-4">
-//         <div className="flex items-center justify-between max-w-7xl mx-auto">
-//           <button 
-//             onClick={() => navigate('/')}
-//             className="text-cyan-400 hover:text-cyan-300 flex items-center gap-2"
-//           >
-//             ← Back to Problems
-//           </button>
-//           <h1 className="text-xl font-bold text-white">Profile</h1>
-//           <div></div>
-//         </div>
-//       </nav>
-
-//       {/* Main Content */}
-//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-//           {/* Left Sidebar - Profile Info */}
-//           <div className="lg:col-span-1">
-//             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700 shadow-xl">
-//               {/* Avatar Section */}
-//               <div className="flex flex-col items-center mb-6">
-//                 <div className="relative mb-4">
-//                   {userData?.avatar ? (
-//                     <img 
-//                       src={userData.avatar} 
-//                       alt={userData.firstName}
-//                       className="w-24 h-24 rounded-full object-cover border-2 border-cyan-400"
-//                     />
-//                   ) : (
-//                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-4xl font-bold text-white shadow-lg">
-//                       {userData?.firstName?.charAt(0)?.toUpperCase() || 'U'}
-//                     </div>
-//                   )}
-//                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-slate-800 rounded-full"></div>
-//                 </div>
-
-//                 {/* Name and Info */}
-//                 <h2 className="text-2xl font-bold text-slate-100 text-center">
-//                   {userData?.firstName} {userData?.lastName || ''}
-//                 </h2>
-//                 <p className="text-cyan-400 font-medium text-sm">@{userData?.firstName?.toLowerCase()}</p>
-//                 <p className="text-slate-400 text-xs mt-1">ID: {userData?._id?.slice(-8)}</p>
-//               </div>
-
-//               {/* Bio */}
-//               {userData?.bio && (
-//                 <div className="mb-6 pb-6 border-b border-slate-700">
-//                   <p className="text-slate-300 text-sm leading-relaxed text-center">
-//                     {userData.bio}
-//                   </p>
-//                 </div>
-//               )}
-
-//               {/* Stats */}
-//               <div className="space-y-3">
-//                 <div className="flex justify-between items-center">
-//                   <span className="text-slate-400">Email:</span>
-//                   <span className="text-slate-200 text-sm">{userData?.emailId}</span>
-//                 </div>
-//                 {userData?.age && (
-//                   <div className="flex justify-between items-center">
-//                     <span className="text-slate-400">Age:</span>
-//                     <span className="text-slate-200">{userData.age}</span>
-//                   </div>
-//                 )}
-//                 <div className="flex justify-between items-center">
-//                   <span className="text-slate-400">Role:</span>
-//                   <span className="text-cyan-400 capitalize">{userData?.role || 'User'}</span>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Right Content - Stats & Activity */}
-//           <div className="lg:col-span-2 space-y-8">
-            
-//             {/* Stats Cards */}
-//             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-//               <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 backdrop-blur-sm rounded-xl p-6 border border-cyan-500/30">
-//                 <div className="text-cyan-400 text-3xl font-bold">✓</div>
-//                 <div className="text-slate-300 text-sm font-medium mb-1">Total Solved</div>
-//                 <div className="text-4xl font-bold text-cyan-400">{stats.totalSolved}</div>
-//               </div>
-              
-//               <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
-//                 <div className="text-green-400 text-3xl font-bold">●</div>
-//                 <div className="text-slate-300 text-sm font-medium mb-1">Easy</div>
-//                 <div className="text-4xl font-bold text-green-400">{stats.easy}</div>
-//               </div>
-              
-//               <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
-//                 <div className="text-yellow-400 text-3xl font-bold">●</div>
-//                 <div className="text-slate-300 text-sm font-medium mb-1">Medium</div>
-//                 <div className="text-4xl font-bold text-yellow-400">{stats.medium}</div>
-//               </div>
-              
-//               <div className="bg-gradient-to-br from-red-500/10 to-pink-500/10 backdrop-blur-sm rounded-xl p-6 border border-red-500/30">
-//                 <div className="text-red-400 text-3xl font-bold">●</div>
-//                 <div className="text-slate-300 text-sm font-medium mb-1">Hard</div>
-//                 <div className="text-4xl font-bold text-red-400">{stats.hard}</div>
-//               </div>
-//             </div>
-
-//             {/* Submission Activity Calendar */}
-//             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700 shadow-xl">
-//               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-6">
-//                 <div>
-//                   <h2 className="text-2xl font-bold text-slate-100">Submission Activity</h2>
-//                   <p className="text-slate-400 text-sm">
-//                     {totalSubmissions} submissions in the past year
-//                   </p>
-//                 </div>
-//                 <div className="flex gap-4 text-sm text-slate-400">
-//                   <span>
-//                     Active days: <span className="text-slate-100 font-semibold">{calendar.filter(day => day.count > 0).length}</span>
-//                   </span>
-//                   <span>
-//                     Max streak: <span className="text-slate-100 font-semibold">{calculateMaxStreak(calendar)}</span>
-//                   </span>
-//                 </div>
-//               </div>
-              
-//               {/* Calendar Grid */}
-//               <div className="overflow-x-auto">
-//                 <div className="grid grid-flow-col grid-rows-7 gap-1 rounded-xl bg-slate-950/40 p-4 border border-slate-700 min-w-[760px]">
-//                   {calendar.map((day, i) => {
-//                     const colors = [
-//                       'bg-slate-700/70',           // 0 submissions
-//                       'bg-emerald-900/70',         // 1-2 submissions
-//                       'bg-emerald-700/80',         // 3-4 submissions
-//                       'bg-emerald-500/85',         // 5-6 submissions
-//                       'bg-emerald-300'             // 7+ submissions
-//                     ];
-                    
-//                     const formatDate = (dateStr) => {
-//                       const date = new Date(dateStr);
-//                       return date.toLocaleDateString('en-US', { 
-//                         weekday: 'short', 
-//                         year: 'numeric', 
-//                         month: 'short', 
-//                         day: 'numeric' 
-//                       });
-//                     };
-                    
-//                     return (
-//                       <div
-//                         key={i}
-//                         className={`h-3.5 w-3.5 rounded-sm ${colors[day.level]} transition-transform hover:scale-110 cursor-pointer`}
-//                         title={`${formatDate(day.date)}: ${day.count} submission${day.count === 1 ? '' : 's'}`}
-//                       />
-//                     );
-//                   })}
-//                 </div>
-                
-//                 {/* Month labels */}
-//                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500 min-w-[760px]">
-//                   {Array.from({ length: 12 }, (_, i) => {
-//                     const monthDate = new Date();
-//                     monthDate.setMonth(monthDate.getMonth() - 11 + i);
-//                     return (
-//                       <span key={i}>
-//                         {monthDate.toLocaleDateString('en-US', { month: 'short' })}
-//                       </span>
-//                     );
-//                   })}
-//                 </div>
-//               </div>
-//             </div>
-
-//             {/* Recent Problems */}
-//             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 border border-slate-700 shadow-xl">
-//               <h2 className="text-2xl font-bold text-slate-100 mb-4">Recent Activity</h2>
-              
-//               {solvedProblems.length > 0 ? (
-//                 <div className="space-y-3">
-//                   {solvedProblems.slice(0, 5).map((problem, index) => {
-//                     const problemData = problem.problemId || problem;
-//                     const difficultyColors = {
-//                       easy: 'bg-green-500/10 text-green-400 border-green-500/30',
-//                       medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-//                       hard: 'bg-red-500/10 text-red-400 border-red-500/30'
-//                     };
-                    
-//                     return (
-//                       <div key={index} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600/50 hover:border-cyan-500/50 transition-colors">
-//                         <div className="flex items-center gap-3">
-//                           <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-//                             <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-//                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-//                             </svg>
-//                           </div>
-//                           <div>
-//                             <h3 className="text-slate-100 font-medium">{problemData?.title || 'Problem'}</h3>
-//                             <p className="text-slate-400 text-sm">Solved recently</p>
-//                           </div>
-//                         </div>
-//                         <div className={`px-3 py-1 rounded-full text-xs font-bold border ${difficultyColors[problemData?.difficulty] || difficultyColors.easy}`}>
-//                           {problemData?.difficulty || 'Easy'}
-//                         </div>
-//                       </div>
-//                     );
-//                   })}
-                  
-//                   {solvedProblems.length > 5 && (
-//                     <button 
-//                       onClick={() => navigate('/')}
-//                       className="w-full mt-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:text-cyan-400 hover:border-cyan-400 transition-all duration-200 font-medium"
-//                     >
-//                       View All Solved Problems ({solvedProblems.length})
-//                     </button>
-//                   )}
-//                 </div>
-//               ) : (
-//                 <div className="text-center py-8">
-//                   <div className="text-slate-400 text-lg mb-2">No recent activity</div>
-//                   <p className="text-slate-500 text-sm">Start solving problems to see your activity here!</p>
-//                   <button 
-//                     onClick={() => navigate('/')}
-//                     className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all"
-//                   >
-//                     Browse Problems
-//                   </button>
-//                 </div>
-//               )}
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-//       {/* Footer */}
-//       <footer className="border-t border-slate-700 mt-16">
-//         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-//           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-//             <div>
-//               <h3 className="font-bold text-slate-100 mb-4">LogicGrid</h3>
-//               <p className="text-slate-400 text-sm">
-//                 A modern coding platform for problem-solving and skill development.
-//               </p>
-//             </div>
-//             <div>
-//               <h4 className="font-bold text-slate-100 mb-4">Platform</h4>
-//               <ul className="space-y-2 text-slate-400 text-sm">
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Problems</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Contests</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Discuss</a></li>
-//               </ul>
-//             </div>
-//             <div>
-//               <h4 className="font-bold text-slate-100 mb-4">Resources</h4>
-//               <ul className="space-y-2 text-slate-400 text-sm">
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Documentation</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Blog</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">FAQ</a></li>
-//               </ul>
-//             </div>
-//             <div>
-//               <h4 className="font-bold text-slate-100 mb-4">Contact</h4>
-//               <ul className="space-y-2 text-slate-400 text-sm">
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Support</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">GitHub</a></li>
-//                 <li><a href="#" className="hover:text-cyan-400 transition-colors">Twitter</a></li>
-//               </ul>
-//             </div>
-//           </div>
-//           <div className="border-t border-slate-700 pt-8 flex flex-col md:flex-row justify-between items-center">
-//             <p className="text-slate-400 text-sm mb-4 md:mb-0">
-//               © 2024 LogicGrid. All rights reserved.
-//             </p>
-//             <div className="flex gap-6 text-slate-400 text-sm">
-//               <a href="#" className="hover:text-cyan-400 transition-colors">Privacy Policy</a>
-//               <a href="#" className="hover:text-cyan-400 transition-colors">Terms of Service</a>
-//               <a href="#" className="hover:text-cyan-400 transition-colors">Cookie Policy</a>
-//             </div>
-//           </div>
-//         </div>
-//       </footer>
-

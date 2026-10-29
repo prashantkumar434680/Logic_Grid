@@ -17,6 +17,7 @@ import AdminUpdate from "./components/AdminUpdate";
 import UpdateProblem from "./components/UpdateProblem";
 import DailyChallenge from "./pages/DailyChallenge";
 import Profile from "./pages/Profile";
+import AdminBookUpload from "./components/AdminBookUpload";
 
 // import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -59,6 +60,7 @@ function App(){
       <Route path="/admin/update/:problemId" element={isAuthenticated && user?.role === 'admin' ? <UpdateProblem/> : <Navigate to="/" /> } ></Route>
       <Route path="/admin/update" element={isAuthenticated && user?.role === 'admin' ? <AdminUpdate/> : <Navigate to="/" /> } ></Route>
       <Route path="/admin/upload/:problemId" element={isAuthenticated && user?.role === 'admin' ? <AdminUpload/> : <Navigate to='/' /> } ></Route>
+      <Route path="/admin/books" element={isAuthenticated && user?.role === 'admin' ? <AdminBookUpload/> : <Navigate to="/" /> } ></Route>
       <Route path="/problem/:problemId" element={ <ProblemPage/> } ></Route>
       <Route path="/daily-challenge" element={isAuthenticated ? <DailyChallenge/> : <Navigate to="/login" />} ></Route>
       <Route path="/profile" element={isAuthenticated ? <Profile/> : <Navigate to="/login" />} ></Route>

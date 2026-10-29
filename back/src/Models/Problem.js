@@ -17,7 +17,18 @@ const problemSchema = new Schema({
     },
     tags:{
         type:String,
-        enum:['array','linkedList','graph','dp'],
+        enum:[
+            'array',
+            'string',
+            'binarySearch',
+            'linkedList',
+            'stackQueue',
+            'tree',
+            'graph',
+            'greedy',
+            'recursionBacktracking',
+            'dp'
+        ],
         required:true
     },
     visibleTestCases:[
@@ -104,4 +115,3 @@ problemSchema.index(
 const Problem = mongoose.model('problem',problemSchema);
 
 module.exports = Problem;
-

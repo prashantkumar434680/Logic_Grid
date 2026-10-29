@@ -13,6 +13,9 @@ const passport = require('./config/passport');
 const SolveProblem = require('./Routes/SolveProb');
 const videoRouter = require('./Routes/videoCreator');
 const interactionRouter = require('./Routes/problemInteraction');
+const bookRouter = require('./Routes/bookRouter');
+const learningRouter = require('./Routes/learningRouter');
+const interviewRouter = require('./Routes/interviewRouter');
 const { startDailyProblemScheduler, stopDailyProblemScheduler } = require('./utils/dailyProblemScheduler');
 
 app.use(cors({
@@ -32,6 +35,9 @@ app.use("/Ai",SolveProblem);
 app.use('/userData',userDataRouter);
 app.use('/video',videoRouter);
 app.use('/interaction',interactionRouter);
+app.use('/book', bookRouter);
+app.use('/learning', learningRouter);
+app.use('/interview', interviewRouter);
 
 const InitalizeConnection = async()=>{
     try{
@@ -60,4 +66,3 @@ process.on('SIGTERM', () => {
     stopDailyProblemScheduler();
     process.exit(0);
 });
-

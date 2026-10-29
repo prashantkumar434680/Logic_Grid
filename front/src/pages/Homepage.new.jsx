@@ -1,6 +1,5 @@
 
 
-
 import { useEffect, useState, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
@@ -8,71 +7,108 @@ import axiosClient from '../utils/axiosClient';
 import axios from 'axios';
 import { checkAuth, logoutUser } from '../authSlice';
 
-// ── Animated grid ────────────────────────────────────────────────────
+// ── Design tokens ────────────────────────────────────────────────────
+// A literal "grid" identity for a logic-puzzle platform: pale graph-paper
+// background, ink text, a pine-green working accent, amber for "today", and
+// rust for danger/hard. Rows read like spreadsheet cells (A1, A2…) instead
+// of plain numbering, which ties the list back to the product name.
+
+const INK = '#161B18';
+const INK_SOFT = 'rgba(22,27,24,0.55)';
+const INK_FAINT = 'rgba(22,27,24,0.32)';
+const PAPER = '#F6F6F1';
+const PAPER_RAISED = '#FFFFFF';
+const LINE = 'rgba(22,27,24,0.12)';
+const LINE_SOFT = 'rgba(22,27,24,0.07)';
+const PINE = '#2F5D50';
+const PINE_SOFT = 'rgba(47,93,80,0.09)';
+const AMBER = '#C4831A';
+const AMBER_SOFT = 'rgba(196,131,26,0.1)';
+const RUST = '#B5482A';
+const RUST_SOFT = 'rgba(181,72,42,0.09)';
+
+// ── Grid-paper canvas ────────────────────────────────────────────────
 
 function GridBackground() {
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    let animId;
     const resize = () => {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
+      draw();
+    };
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const CELL = 34;
+      ctx.strokeStyle = 'rgba(22,27,24,0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += CELL) {
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += CELL) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(canvas.width, y + 0.5);
+        ctx.stroke();
+      }
+      // a few emphasised cells, like graph-paper index lines
+      ctx.strokeStyle = 'rgba(47,93,80,0.09)';
+      for (let x = 0; x < canvas.width; x += CELL * 5) {
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += CELL * 5) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + 0.5);
+        ctx.lineTo(canvas.width, y + 0.5);
+        ctx.stroke();
+      }
     };
     resize();
     window.addEventListener('resize', resize);
-    let t = 0;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const CELL = 42;
-      const cols = Math.floor(canvas.width / CELL) + 2;
-      const rows = Math.floor(canvas.height / CELL) + 2;
-      const cw = canvas.width / cols;
-      const ch = canvas.height / rows;
-      t += 0.008;
-      for (let i = 0; i < cols * rows; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const phase = ((col * 0.6 + row * 0.45) % (Math.PI * 2));
-        const o = Math.max(0, 0.04 + 0.07 * Math.sin(t + phase));
-        ctx.strokeStyle = `rgba(139,92,246,${o})`;
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(col * cw, row * ch, cw, ch);
-        if (Math.sin(t * 0.3 + phase) > 0.96) {
-          ctx.fillStyle = `rgba(139,92,246,${o * 4})`;
-          ctx.fillRect(col * cw + cw / 2 - 1.5, row * ch + ch / 2 - 1.5, 3, 3);
-        }
-      }
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
+    return () => window.removeEventListener('resize', resize);
   }, []);
   return (
     <canvas ref={canvasRef} style={{
-      position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.3, pointerEvents: 'none',
+      position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none',
     }} />
   );
+}
+
+// ── Spreadsheet-style cell reference (row label) ────────────────────
+
+function colLabel(n) {
+  let s = '';
+  n += 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
 }
 
 // ── Badges ───────────────────────────────────────────────────────────
 
 function DiffBadge({ difficulty }) {
   const map = {
-    easy: { bg: 'rgba(16,185,129,0.1)', color: '#6ee7b7', border: 'rgba(16,185,129,0.2)' },
-    medium: { bg: 'rgba(245,158,11,0.1)', color: '#fcd34d', border: 'rgba(245,158,11,0.2)' },
-    hard: { bg: 'rgba(239,68,68,0.1)', color: '#fca5a5', border: 'rgba(239,68,68,0.2)' },
+    easy: { bg: PINE_SOFT, color: PINE, border: 'rgba(47,93,80,0.28)' },
+    medium: { bg: AMBER_SOFT, color: AMBER, border: 'rgba(196,131,26,0.3)' },
+    hard: { bg: RUST_SOFT, color: RUST, border: 'rgba(181,72,42,0.3)' },
   };
-  const s = map[difficulty?.toLowerCase()] || { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', border: 'rgba(255,255,255,0.1)' };
+  const s = map[difficulty?.toLowerCase()] || { bg: 'rgba(22,27,24,0.04)', color: INK_FAINT, border: LINE };
   return (
     <span style={{
-      fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px',
+      fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px',
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
-      letterSpacing: '0.04em', textTransform: 'capitalize',
+      letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace",
     }}>
       {difficulty}
     </span>
@@ -82,8 +118,9 @@ function DiffBadge({ difficulty }) {
 function TagBadge({ tag }) {
   return (
     <span style={{
-      fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px',
-      background: 'rgba(139,92,246,0.1)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.2)',
+      fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px',
+      background: 'transparent', color: INK_SOFT, border: `1px solid ${LINE}`,
+      fontFamily: "'JetBrains Mono', monospace",
     }}>
       {tag}
     </span>
@@ -92,27 +129,32 @@ function TagBadge({ tag }) {
 
 // ── Stat card ────────────────────────────────────────────────────────
 
-function StatCard({ num, label, accent }) {
+function StatCard({ num, label, accent, cell }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.025)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: '14px',
+      background: PAPER_RAISED,
+      border: `1px solid ${LINE}`,
+      borderRadius: '10px',
       padding: '16px',
       position: 'relative',
-      overflow: 'hidden',
     }}>
-      {accent && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-          background: accent,
-        }} />
-      )}
+      <span style={{
+        position: 'absolute', top: '10px', right: '12px',
+        fontSize: '10px', fontFamily: "'JetBrains Mono', monospace",
+        color: INK_FAINT, letterSpacing: '0.04em',
+      }}>{cell}</span>
       <p style={{
-        fontFamily: "'Instrument Serif', serif",
-        fontSize: '28px', color: '#f1f5f9', margin: '0 0 4px', lineHeight: 1,
+        fontFamily: "'Space Grotesk', sans-serif",
+        fontWeight: 600,
+        fontSize: '26px', color: INK, margin: '0 0 4px', lineHeight: 1,
       }}>{num}</p>
-      <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', margin: 0, fontWeight: '500' }}>{label}</p>
+      <p style={{ fontSize: '11px', color: INK_SOFT, margin: 0, fontWeight: '500' }}>{label}</p>
+      <div style={{
+        marginTop: '10px', height: '3px', borderRadius: '2px',
+        background: LINE_SOFT, overflow: 'hidden',
+      }}>
+        <div style={{ height: '100%', width: '100%', background: accent }} />
+      </div>
     </div>
   );
 }
@@ -187,56 +229,58 @@ function ProfileModal({ user, onClose, onSaved }) {
   };
 
   const inp = {
-    width: '100%', padding: '10px 14px', borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-    color: '#f1f5f9', fontSize: '13px', outline: 'none',
-    fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box',
+    width: '100%', padding: '10px 14px', borderRadius: '8px',
+    border: `1px solid ${LINE}`, background: PAPER,
+    color: INK, fontSize: '13px', outline: 'none',
+    fontFamily: "'Inter', sans-serif", boxSizing: 'border-box',
   };
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 70, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: '16px',
-      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+      background: 'rgba(22,27,24,0.35)', backdropFilter: 'blur(4px)',
     }}>
       <div style={{
-        width: '100%', maxWidth: '600px', borderRadius: '20px',
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: '#0e0e1a', padding: '28px', color: '#f1f5f9',
+        width: '100%', maxWidth: '600px', borderRadius: '14px',
+        border: `1px solid ${LINE}`,
+        background: PAPER_RAISED, padding: '28px', color: INK,
+        boxShadow: '0 24px 60px rgba(22,27,24,0.18)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
           <div>
-            <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: '26px', margin: '0 0 4px' }}>Edit profile</h2>
-            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Update your name and profile picture.</p>
+            <p style={{ margin: '0 0 6px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", color: PINE, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Cell · Profile</p>
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: '24px', margin: 0 }}>Edit profile</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '20px', lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK_FAINT, fontSize: '18px', lineHeight: 1 }}>✕</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '140px' }}>
               {previewUrl ? (
-                <img src={previewUrl} alt="Avatar" style={{ width: '88px', height: '88px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(139,92,246,0.4)' }} />
+                <img src={previewUrl} alt="Avatar" style={{ width: '84px', height: '84px', borderRadius: '10px', objectFit: 'cover', border: `1px solid ${LINE}` }} />
               ) : (
                 <div style={{
-                  width: '88px', height: '88px', borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
+                  width: '84px', height: '84px', borderRadius: '10px',
+                  background: PINE,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '28px', fontWeight: '700', color: '#fff',
+                  fontSize: '26px', fontWeight: '600', color: '#fff',
+                  fontFamily: "'Space Grotesk', sans-serif",
                 }}>
                   {firstName?.[0]?.toUpperCase() || 'U'}
                 </div>
               )}
               <label style={{
-                padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
-                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.1)',
-                color: '#c4b5fd', cursor: 'pointer',
+                padding: '7px 14px', borderRadius: '7px', fontSize: '11px', fontWeight: '600',
+                border: `1px solid ${LINE}`, background: PAPER,
+                color: INK, cursor: 'pointer', fontFamily: "'Inter', sans-serif",
               }}>
                 Upload
                 <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
               </label>
               <button type="button" onClick={() => { setSelectedFile(null); setAvatar(null); setRemoveAvatar(true); }}
-                style={{ fontSize: '11px', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}>
+                style={{ fontSize: '11px', color: RUST, background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>
                 Remove photo
               </button>
             </div>
@@ -245,28 +289,28 @@ function ProfileModal({ user, onClose, onSaved }) {
               <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" style={inp} />
               <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" style={inp} />
               <input type="number" min="6" max="80" value={age} onChange={e => setAge(e.target.value)} placeholder="Age" style={inp} />
-              <input type="email" value={user?.emailId || ''} disabled style={{ ...inp, opacity: 0.4, cursor: 'not-allowed' }} />
+              <input type="email" value={user?.emailId || ''} disabled style={{ ...inp, opacity: 0.5, cursor: 'not-allowed' }} />
               <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Short bio" rows={3}
                 style={{ ...inp, gridColumn: 'span 2', resize: 'vertical' }} />
             </div>
           </div>
 
           {error && (
-            <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', fontSize: '13px', color: '#fca5a5', marginBottom: '16px' }}>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: RUST_SOFT, border: `1px solid rgba(181,72,42,0.25)`, fontSize: '13px', color: RUST, marginBottom: '16px' }}>
               {error}
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" onClick={onClose} style={{
-              padding: '9px 20px', borderRadius: '9px', border: '1px solid rgba(255,255,255,0.08)',
-              background: 'transparent', color: 'rgba(255,255,255,0.45)', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              padding: '9px 20px', borderRadius: '7px', border: `1px solid ${LINE}`,
+              background: 'transparent', color: INK_SOFT, fontSize: '13px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
             }}>Cancel</button>
             <button type="submit" disabled={saving || uploading} style={{
-              padding: '9px 22px', borderRadius: '9px', border: 'none',
-              background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
+              padding: '9px 22px', borderRadius: '7px', border: 'none',
+              background: PINE,
               color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              opacity: saving || uploading ? 0.6 : 1, fontFamily: "'DM Sans', sans-serif",
+              opacity: saving || uploading ? 0.6 : 1, fontFamily: "'Inter', sans-serif",
             }}>
               {saving || uploading ? 'Saving…' : 'Save changes'}
             </button>
@@ -294,73 +338,74 @@ function UserDropdown({ user, onLogout, onEditProfile }) {
     <div ref={ref} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(v => !v)} style={{
         display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '6px 12px 6px 6px', borderRadius: '99px',
-        border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-        color: 'rgba(255,255,255,0.75)', cursor: 'pointer', fontSize: '13px',
-        fontFamily: "'DM Sans', sans-serif", transition: 'all 0.15s',
+        padding: '5px 12px 5px 5px', borderRadius: '8px',
+        border: `1px solid ${LINE}`, background: PAPER_RAISED,
+        color: INK, cursor: 'pointer', fontSize: '13px',
+        fontFamily: "'Inter', sans-serif", transition: 'border-color 0.15s',
       }}>
         {user?.avatar ? (
-          <img src={user.avatar} alt={user?.firstName} style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={user.avatar} alt={user?.firstName} style={{ width: '26px', height: '26px', borderRadius: '6px', objectFit: 'cover' }} />
         ) : (
           <div style={{
-            width: '26px', height: '26px', borderRadius: '50%',
-            background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
+            width: '26px', height: '26px', borderRadius: '6px',
+            background: PINE,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '11px', fontWeight: '700', color: '#fff',
+            fontFamily: "'Space Grotesk', sans-serif",
           }}>
             {user?.firstName?.[0]?.toUpperCase()}
           </div>
         )}
         {user?.firstName}
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+        <span style={{ color: INK_FAINT, fontSize: '9px', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
       </button>
 
       {open && (
         <div style={{
           position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-          width: '188px', borderRadius: '14px', overflow: 'hidden',
-          background: 'rgba(12,12,22,0.97)', border: '1px solid rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(16px)', zIndex: 50,
-          boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
+          width: '190px', borderRadius: '10px', overflow: 'hidden',
+          background: PAPER_RAISED, border: `1px solid ${LINE}`,
+          zIndex: 50,
+          boxShadow: '0 20px 40px rgba(22,27,24,0.14)',
         }}>
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: '600', color: '#f1f5f9' }}>{user?.firstName}</p>
-            <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{user?.emailId}</p>
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${LINE_SOFT}` }}>
+            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: '600', color: INK }}>{user?.firstName}</p>
+            <p style={{ margin: 0, fontSize: '11px', color: INK_FAINT, fontFamily: "'JetBrains Mono', monospace" }}>{user?.emailId}</p>
           </div>
 
           <div style={{ padding: '6px' }}>
             {[
-              { label: 'My Profile', icon: '👤', onClick: () => { navigate('/profile'); setOpen(false); } },
-              { label: 'Edit profile', icon: '✏️', onClick: () => { onEditProfile(); setOpen(false); } },
-              ...(user?.role === 'admin' ? [{ label: 'Admin panel', icon: '⚙️', onClick: () => { navigate('/admin'); setOpen(false); }, color: '#a78bfa' }] : []),
+              { label: 'My profile', onClick: () => { navigate('/profile'); setOpen(false); } },
+              { label: 'Edit profile', onClick: () => { onEditProfile(); setOpen(false); } },
+              ...(user?.role === 'admin' ? [{ label: 'Admin panel', onClick: () => { navigate('/admin'); setOpen(false); }, color: PINE }] : []),
             ].map(item => (
               <button key={item.label} onClick={item.onClick} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '8px 10px', borderRadius: '8px', border: 'none',
-                background: 'transparent', color: item.color || 'rgba(255,255,255,0.65)',
-                fontSize: '12px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 10px', borderRadius: '6px', border: 'none',
+                background: 'transparent', color: item.color || INK_SOFT,
+                fontSize: '12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
                 textAlign: 'left', transition: 'background 0.1s',
               }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(22,27,24,0.05)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <span style={{ fontSize: '13px' }}>{item.icon}</span> {item.label}
+                {item.label}
               </button>
             ))}
 
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '4px 0' }} />
+            <div style={{ height: '1px', background: LINE_SOFT, margin: '4px 0' }} />
 
             <button onClick={() => { onLogout(); setOpen(false); }} style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '8px 10px', borderRadius: '8px', border: 'none',
-              background: 'transparent', color: '#f87171',
-              fontSize: '12px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 10px', borderRadius: '6px', border: 'none',
+              background: 'transparent', color: RUST,
+              fontSize: '12px', cursor: 'pointer', fontFamily: "'Inter', sans-serif",
               textAlign: 'left',
             }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+              onMouseEnter={e => e.currentTarget.style.background = RUST_SOFT}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <span>🚪</span> Logout
+              Log out
             </button>
           </div>
         </div>
@@ -467,7 +512,7 @@ export default function Homepage() {
     const regex = new RegExp(`(${trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'ig');
     return text.split(regex).map((part, i) =>
       part.toLowerCase() === trimmed.toLowerCase()
-        ? <mark key={i} style={{ background: 'rgba(251,191,36,0.25)', color: '#fde68a', borderRadius: '3px', padding: '0 2px' }}>{part}</mark>
+        ? <mark key={i} style={{ background: AMBER_SOFT, color: AMBER, borderRadius: '3px', padding: '0 2px' }}>{part}</mark>
         : <span key={i}>{part}</span>
     );
   };
@@ -475,68 +520,63 @@ export default function Homepage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         * { box-sizing: border-box; }
         body { margin: 0; }
-        ::placeholder { color: rgba(255,255,255,0.2) !important; }
-        .search-input:focus { border-color: rgba(139,92,246,0.6) !important; box-shadow: 0 0 0 3px rgba(139,92,246,0.15) !important; }
-        .filter-select:focus { border-color: rgba(139,92,246,0.5) !important; outline: none; }
-        .problem-row:hover { background: rgba(139,92,246,0.06) !important; border-color: rgba(139,92,246,0.2) !important; }
-        .problem-row:hover .row-title { color: #f1f5f9 !important; }
-        .problem-row:hover .row-arrow { color: rgba(255,255,255,0.5) !important; }
-        .problem-card:hover { border-color: rgba(139,92,246,0.35) !important; background: rgba(139,92,246,0.06) !important; transform: translateY(-2px); }
-        .recent-chip:hover { background: rgba(255,255,255,0.08) !important; color: rgba(255,255,255,0.8) !important; }
-        .search-btn:hover { background: rgba(139,92,246,0.18) !important; }
-        select option { background: #111122; color: #f1f5f9; }
+        ::placeholder { color: rgba(22,27,24,0.28) !important; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+        .search-input:focus { border-color: ${PINE} !important; box-shadow: 0 0 0 3px ${PINE_SOFT} !important; }
+        .filter-select:focus { border-color: ${PINE} !important; outline: none; }
+        .problem-row { position: relative; }
+        .problem-row:hover { background: ${PAPER_RAISED} !important; border-color: ${PINE} !important; box-shadow: inset 0 0 0 1px ${PINE}; }
+        .problem-row:hover .row-title { color: ${INK} !important; }
+        .problem-row:hover .row-arrow { color: ${PINE} !important; }
+        .problem-card:hover { border-color: ${PINE} !important; box-shadow: inset 0 0 0 1px ${PINE}; }
+        .recent-chip:hover { background: ${PAPER_RAISED} !important; border-color: ${INK_FAINT} !important; }
+        .search-btn:hover { background: #24493f !important; }
+        select option { background: ${PAPER_RAISED}; color: ${INK}; }
       `}</style>
 
       <div style={{
-        minHeight: '100vh', background: '#09090f',
-        fontFamily: "'DM Sans', sans-serif", position: 'relative', overflow: 'hidden',
+        minHeight: '100vh', background: PAPER,
+        fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden',
       }}>
         <GridBackground />
-
-        {/* Ambient glows */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 80% 40% at 50% 0%, rgba(109,40,217,0.12) 0%, transparent 60%), radial-gradient(ellipse 50% 30% at 85% 70%, rgba(59,130,246,0.08) 0%, transparent 55%)',
-        }} />
 
         <div style={{ position: 'relative', zIndex: 10 }}>
 
           {/* ── Navbar ── */}
           <nav style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 28px', height: '60px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-            backdropFilter: 'blur(16px)', background: 'rgba(9,9,15,0.7)',
+            padding: '0 28px', height: '58px',
+            borderBottom: `1px solid ${LINE}`,
+            background: 'rgba(246,246,241,0.85)', backdropFilter: 'blur(10px)',
             position: 'sticky', top: 0, zIndex: 40,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
               <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
                 <div style={{
-                  width: '30px', height: '30px', borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #7c3aed, #3b82f6)',
+                  width: '28px', height: '28px', borderRadius: '6px',
+                  background: PINE,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
                     <path d="M4 4h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 10h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 16h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z" />
                   </svg>
                 </div>
                 <span style={{
-                  fontFamily: "'Instrument Serif', serif", fontSize: '18px',
-                  color: '#f1f5f9', letterSpacing: '-0.01em',
+                  fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: '17px',
+                  color: INK, letterSpacing: '-0.01em',
                 }}>LogicGrid</span>
               </NavLink>
 
               <NavLink to="/daily-challenge" style={{
-                fontSize: '11px', fontWeight: '600', padding: '4px 12px', borderRadius: '99px',
-                border: '1px solid rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.08)',
-                color: '#fde68a', textDecoration: 'none', letterSpacing: '0.02em',
-                transition: 'background 0.15s',
+                fontSize: '11px', fontWeight: '600', padding: '4px 11px', borderRadius: '6px',
+                border: `1px solid rgba(196,131,26,0.35)`, background: AMBER_SOFT,
+                color: AMBER, textDecoration: 'none', letterSpacing: '0.02em',
+                fontFamily: "'JetBrains Mono', monospace",
               }}>
-                ⚡ Daily Challenge
+                ▲ DAILY
               </NavLink>
             </div>
 
@@ -549,48 +589,53 @@ export default function Homepage() {
           <div style={{ maxWidth: '880px', margin: '0 auto', padding: '36px 24px' }}>
 
             {/* Hero header */}
-            <div style={{ marginBottom: '32px' }}>
+            <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
               <h1 style={{
-                fontFamily: "'Instrument Serif', serif",
-                fontSize: '38px', fontWeight: '400', color: '#f1f5f9',
-                margin: '0 0 8px', lineHeight: 1.1,
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '32px', fontWeight: '600', color: INK,
+                margin: 0, lineHeight: 1.1,
               }}>
-                Problem Set
+                Problem set
               </h1>
-              <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.35)', fontWeight: '400' }}>
-                Sharpen your skills. Track your progress. Beat the leaderboard.
-              </p>
+              <span style={{
+                fontSize: '11px', color: INK_FAINT, fontFamily: "'JetBrains Mono', monospace",
+              }}>
+                / {problems.length} entries indexed
+              </span>
             </div>
 
             {/* Stats */}
             {user && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '32px' }}>
-                <StatCard num={solvedCount} label="Solved" accent="linear-gradient(90deg,#7c3aed,#3b82f6)" />
-                <StatCard num={problems.length} label="Total problems" accent="rgba(255,255,255,0.08)" />
+                <StatCard cell="A1" num={solvedCount} label="Solved" accent={PINE} />
+                <StatCard cell="A2" num={problems.length} label="Total problems" accent={INK_FAINT} />
                 <StatCard
+                  cell="A3"
                   num={`${Math.round((solvedCount / (problems.length || 1)) * 100)}%`}
                   label="Completion"
-                  accent="linear-gradient(90deg,#059669,#10b981)"
+                  accent={AMBER}
                 />
                 <StatCard
+                  cell="A4"
                   num={problems.filter(p => p.difficulty === 'hard' && isSolved(p._id)).length}
                   label="Hard solved"
-                  accent="linear-gradient(90deg,#dc2626,#ef4444)"
+                  accent={RUST}
                 />
               </div>
             )}
 
             {/* Search bar */}
             <div style={{
-              background: 'rgba(255,255,255,0.025)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: '16px', padding: '16px', marginBottom: '20px',
+              background: PAPER_RAISED,
+              border: `1px solid ${LINE}`,
+              borderRadius: '12px', padding: '16px', marginBottom: '20px',
             }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <span style={{
                     position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
-                    color: 'rgba(255,255,255,0.25)', fontSize: '15px', pointerEvents: 'none',
+                    color: INK_FAINT, fontSize: '14px', pointerEvents: 'none',
+                    fontFamily: "'JetBrains Mono', monospace",
                   }}>
                     {searchLoading ? '⟳' : '⌕'}
                   </span>
@@ -602,9 +647,9 @@ export default function Homepage() {
                     placeholder="Search problems by name…"
                     style={{
                       width: '100%', padding: '11px 14px 11px 40px',
-                      borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)',
-                      background: 'rgba(255,255,255,0.04)', color: '#f1f5f9',
-                      fontSize: '14px', outline: 'none', fontFamily: "'DM Sans', sans-serif",
+                      borderRadius: '8px', border: `1px solid ${LINE}`,
+                      background: PAPER, color: INK,
+                      fontSize: '14px', outline: 'none', fontFamily: "'Inter', sans-serif",
                       transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
                   />
@@ -614,7 +659,7 @@ export default function Homepage() {
                       style={{
                         position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
                         background: 'none', border: 'none', cursor: 'pointer',
-                        color: 'rgba(255,255,255,0.3)', fontSize: '16px', lineHeight: 1, padding: '2px 4px',
+                        color: INK_FAINT, fontSize: '16px', lineHeight: 1, padding: '2px 4px',
                       }}
                     >×</button>
                   )}
@@ -625,11 +670,11 @@ export default function Homepage() {
                   onClick={() => runSearch()}
                   disabled={searchLoading}
                   style={{
-                    padding: '11px 22px', borderRadius: '10px',
-                    border: '1px solid rgba(139,92,246,0.3)',
-                    background: 'rgba(139,92,246,0.1)', color: '#c4b5fd',
+                    padding: '11px 22px', borderRadius: '8px',
+                    border: 'none',
+                    background: PINE, color: '#fff',
                     fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap',
+                    fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap',
                     transition: 'background 0.15s',
                   }}
                 >
@@ -639,17 +684,17 @@ export default function Homepage() {
 
               {/* Recent searches */}
               {recentSearches.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginRight: '4px' }}>Recent:</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', color: INK_FAINT, fontFamily: "'JetBrains Mono', monospace", marginRight: '4px' }}>RECENT</span>
                   {recentSearches.map((entry, i) => (
                     <button
                       key={i}
                       className="recent-chip"
                       onClick={() => { setSearchName(entry.name || ''); runSearch(entry.name || ''); }}
                       style={{
-                        padding: '3px 12px', borderRadius: '99px', fontSize: '11px', fontWeight: '500',
-                        border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)',
-                        color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                        padding: '3px 11px', borderRadius: '99px', fontSize: '11px', fontWeight: '500',
+                        border: `1px solid ${LINE}`, background: PAPER,
+                        color: INK_SOFT, cursor: 'pointer', fontFamily: "'Inter', sans-serif",
                         transition: 'all 0.15s',
                       }}
                     >
@@ -662,12 +707,12 @@ export default function Homepage() {
 
             {/* Filters */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px', alignItems: 'center' }}>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: '600', letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: '4px' }}>Filter</span>
+              <span style={{ fontSize: '10px', color: INK_FAINT, fontWeight: '600', letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: '4px', fontFamily: "'JetBrains Mono', monospace" }}>Filter</span>
 
               {[
-                { key: 'status', opts: [['all', 'All Status'], ['solved', 'Solved']] },
-                { key: 'difficulty', opts: [['all', 'All Difficulties'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']] },
-                { key: 'tag', opts: [['all', 'All Tags'], ['array', 'Array'], ['linkedList', 'Linked List'], ['graph', 'Graph'], ['dp', 'DP']] },
+                { key: 'status', opts: [['all', 'All status'], ['solved', 'Solved']] },
+                { key: 'difficulty', opts: [['all', 'All difficulties'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']] },
+                { key: 'tag', opts: [['all', 'All tags'], ['array', 'Array'], ['linkedList', 'Linked List'], ['graph', 'Graph'], ['dp', 'DP']] },
               ].map(({ key, opts }) => (
                 <select
                   key={key}
@@ -675,11 +720,11 @@ export default function Homepage() {
                   value={filters[key]}
                   onChange={e => setFilters(f => ({ ...f, [key]: e.target.value }))}
                   style={{
-                    padding: '6px 12px', borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)',
+                    padding: '6px 12px', borderRadius: '7px',
+                    border: `1px solid ${LINE}`,
+                    background: PAPER_RAISED, color: INK_SOFT,
                     fontSize: '12px', fontWeight: '500', cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif", transition: 'border-color 0.15s',
+                    fontFamily: "'Inter', sans-serif", transition: 'border-color 0.15s',
                   }}
                 >
                   {opts.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
@@ -687,10 +732,10 @@ export default function Homepage() {
               ))}
 
               <span style={{
-                marginLeft: 'auto', fontSize: '11px', color: 'rgba(255,255,255,0.25)',
-                fontWeight: '600', letterSpacing: '0.06em', textTransform: 'uppercase',
+                marginLeft: 'auto', fontSize: '11px', color: INK_FAINT,
+                fontWeight: '500', fontFamily: "'JetBrains Mono', monospace",
               }}>
-                {searchLoading ? 'Searching…' : `${displayedProblems.length} problem${displayedProblems.length !== 1 ? 's' : ''}${hasSearched ? ' found' : ''}`}
+                {searchLoading ? 'searching…' : `${displayedProblems.length} row${displayedProblems.length !== 1 ? 's' : ''}${hasSearched ? ' matched' : ''}`}
               </span>
             </div>
 
@@ -701,8 +746,8 @@ export default function Homepage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[1, 2, 3, 4, 5].map(i => (
                   <div key={i} style={{
-                    height: '68px', borderRadius: '12px',
-                    background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)',
+                    height: '64px', borderRadius: '10px',
+                    background: PAPER_RAISED, border: `1px solid ${LINE_SOFT}`,
                     animation: 'pulse 1.5s ease-in-out infinite',
                   }} />
                 ))}
@@ -712,9 +757,9 @@ export default function Homepage() {
             {/* Error */}
             {!loading && !searchLoading && searchError && (
               <div style={{
-                padding: '14px 18px', borderRadius: '12px',
-                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                fontSize: '13px', color: '#fca5a5',
+                padding: '14px 18px', borderRadius: '10px',
+                background: RUST_SOFT, border: `1px solid rgba(181,72,42,0.25)`,
+                fontSize: '13px', color: RUST,
               }}>
                 {searchError}
               </div>
@@ -723,34 +768,36 @@ export default function Homepage() {
             {/* Empty states */}
             {!loading && !searchLoading && !searchError && hasSearched && displayedProblems.length === 0 && (
               <div style={{ textAlign: 'center', padding: '64px 0' }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
-                <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '14px', margin: 0 }}>No results for "{searchName}"</p>
+                <p style={{ color: INK_FAINT, fontSize: '13px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>NO ROWS MATCH "{searchName}"</p>
               </div>
             )}
 
             {!loading && !searchLoading && !searchError && !hasSearched && filtered.length === 0 && (
               <div style={{ textAlign: 'center', padding: '64px 0' }}>
-                <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '14px', margin: 0 }}>No problems match these filters.</p>
+                <p style={{ color: INK_FAINT, fontSize: '13px', margin: 0, fontFamily: "'JetBrains Mono', monospace" }}>NO PROBLEMS MATCH THESE FILTERS</p>
               </div>
             )}
 
             {/* Search results — card grid */}
             {!loading && !searchLoading && !searchError && (hasSearched || hasActiveSearchInput) && displayedProblems.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '14px' }}>
-                {displayedProblems.map(problem => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
+                {displayedProblems.map((problem, idx) => (
                   <div
                     key={problem._id}
                     className="problem-card"
                     style={{
-                      borderRadius: '14px', border: '1px solid rgba(255,255,255,0.07)',
-                      background: 'rgba(255,255,255,0.025)', padding: '20px',
-                      transition: 'all 0.2s ease',
+                      borderRadius: '10px', border: `1px solid ${LINE}`,
+                      background: PAPER_RAISED, padding: '18px',
+                      transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                      <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'rgba(255,255,255,0.85)', lineHeight: 1.3 }}>
-                        {highlightText(problem.title, activeQuery)}
-                      </h3>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline' }}>
+                        <span style={{ fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", color: INK_FAINT }}>{colLabel(idx)}</span>
+                        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: INK, lineHeight: 1.3 }}>
+                          {highlightText(problem.title, activeQuery)}
+                        </h3>
+                      </div>
                       <DiffBadge difficulty={problem.difficulty} />
                     </div>
 
@@ -758,29 +805,30 @@ export default function Homepage() {
                       {problem.tags && <TagBadge tag={problem.tags} />}
                       {problem.isDailyProblem && (
                         <span style={{
-                          fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px',
-                          border: '1px solid rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.1)', color: '#fde68a',
-                        }}>Daily</span>
+                          fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px',
+                          border: `1px solid rgba(196,131,26,0.3)`, background: AMBER_SOFT, color: AMBER,
+                          fontFamily: "'JetBrains Mono', monospace",
+                        }}>DAILY</span>
                       )}
                     </div>
 
-                    <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6', minHeight: '40px' }}>
+                    <p style={{ margin: '0 0 16px', fontSize: '12px', color: INK_SOFT, lineHeight: '1.6', minHeight: '40px' }}>
                       {problem.description ? highlightText(`${problem.description.slice(0, 110)}${problem.description.length > 110 ? '…' : ''}`, activeQuery) : 'No description available.'}
                     </p>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       {isSolved(problem._id) ? (
-                        <span style={{ fontSize: '11px', color: '#6ee7b7', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          ✓ Solved
+                        <span style={{ fontSize: '11px', color: PINE, fontFamily: "'JetBrains Mono', monospace" }}>
+                          ✓ SOLVED
                         </span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)' }}>Unsolved</span>
+                        <span style={{ fontSize: '11px', color: INK_FAINT, fontFamily: "'JetBrains Mono', monospace" }}>UNSOLVED</span>
                       )}
                       <NavLink
                         to={`/problem/${problem._id}`}
                         style={{
-                          padding: '7px 18px', borderRadius: '8px', fontSize: '12px', fontWeight: '600',
-                          background: 'linear-gradient(135deg,#7c3aed,#3b82f6)',
+                          padding: '6px 16px', borderRadius: '7px', fontSize: '12px', fontWeight: '600',
+                          background: PINE,
                           color: '#fff', textDecoration: 'none', transition: 'opacity 0.15s',
                         }}
                       >
@@ -802,22 +850,23 @@ export default function Homepage() {
                     className="problem-row"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '14px 18px', borderRadius: '12px', textDecoration: 'none',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                      background: 'rgba(255,255,255,0.02)',
-                      transition: 'all 0.15s ease',
+                      padding: '13px 16px', borderRadius: '10px', textDecoration: 'none',
+                      border: `1px solid ${LINE_SOFT}`,
+                      background: PAPER_RAISED,
+                      transition: 'border-color 0.15s, box-shadow 0.15s',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <span style={{
-                        fontSize: '12px', color: 'rgba(255,255,255,0.15)',
-                        width: '28px', fontWeight: '600', fontFamily: 'monospace', flexShrink: 0,
-                      }}>{String(idx + 1).padStart(2, '0')}</span>
+                        fontSize: '11px', color: INK_FAINT,
+                        width: '30px', fontWeight: '600', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0,
+                        border: `1px solid ${LINE}`, borderRadius: '4px', textAlign: 'center', padding: '2px 0',
+                      }}>{colLabel(idx)}</span>
 
                       <div>
                         <p className="row-title" style={{
                           margin: '0 0 6px', fontSize: '14px', fontWeight: '500',
-                          color: 'rgba(255,255,255,0.75)', transition: 'color 0.15s',
+                          color: INK, transition: 'color 0.15s',
                         }}>
                           {problem.title}
                         </p>
@@ -826,9 +875,10 @@ export default function Homepage() {
                           {problem.tags && <TagBadge tag={problem.tags} />}
                           {problem.isDailyProblem && (
                             <span style={{
-                              fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '99px',
-                              border: '1px solid rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.1)', color: '#fde68a',
-                            }}>⚡ Daily</span>
+                              fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px',
+                              border: `1px solid rgba(196,131,26,0.3)`, background: AMBER_SOFT, color: AMBER,
+                              fontFamily: "'JetBrains Mono', monospace",
+                            }}>DAILY</span>
                           )}
                         </div>
                       </div>
@@ -837,14 +887,14 @@ export default function Homepage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                       {isSolved(problem._id) ? (
                         <span style={{
-                          fontSize: '11px', color: '#6ee7b7', fontWeight: '600',
-                          background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-                          padding: '3px 10px', borderRadius: '99px',
-                        }}>✓ Solved</span>
+                          fontSize: '11px', color: PINE, fontWeight: '600',
+                          background: PINE_SOFT, border: `1px solid rgba(47,93,80,0.25)`,
+                          padding: '3px 10px', borderRadius: '99px', fontFamily: "'JetBrains Mono', monospace",
+                        }}>✓ SOLVED</span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)' }}>Unsolved</span>
+                        <span style={{ fontSize: '11px', color: INK_FAINT, fontFamily: "'JetBrains Mono', monospace" }}>UNSOLVED</span>
                       )}
-                      <span className="row-arrow" style={{ color: 'rgba(255,255,255,0.12)', fontSize: '18px', transition: 'color 0.15s' }}>›</span>
+                      <span className="row-arrow" style={{ color: INK_FAINT, fontSize: '16px', transition: 'color 0.15s' }}>→</span>
                     </div>
                   </NavLink>
                 ))}
